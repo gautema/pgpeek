@@ -1,0 +1,12 @@
+services:
+  pgpeek:
+    build: .
+    ports:
+      - "4000:4000"
+    environment:
+      DATABASE_URL: postgres://readonly_user:pass@host:5432/mydb
+      ADMIN_PASSWORD: changeme
+      SECRET_KEY_BASE: generate-me-with-mix-phx-gen-secret
+      PHX_HOST: localhost
+    volumes:
+      - ./data:/data
