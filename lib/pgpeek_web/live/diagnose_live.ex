@@ -297,9 +297,38 @@ defmodule PgpeekWeb.DiagnoseLive do
             </p>
           </div>
         <% else %>
+          <%!-- Mobile: horizontal scrollable check picker --%>
+          <div class="lg:hidden space-y-3">
+            <%= for {_cat_id, cat_name, _cat_icon, check_ids} <- @categories do %>
+              <div>
+                <p class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5 px-1">
+                  {cat_name}
+                </p>
+                <div class="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+                  <%= for check_id <- check_ids do %>
+                    <% check = get_check(check_id) %>
+                    <button
+                      phx-click="run_check"
+                      phx-value-check={check_id}
+                      class={[
+                        "shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer whitespace-nowrap",
+                        if(@active_check == check_id,
+                          do: "bg-blue-500/15 text-blue-400 border border-blue-500/20",
+                          else: "bg-white/5 text-slate-400 border border-white/5"
+                        )
+                      ]}
+                    >
+                      {check.label}
+                    </button>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+          </div>
+
           <div class="grid grid-cols-1 gap-6 lg:grid-cols-4">
-            <%!-- Sidebar --%>
-            <div class="lg:col-span-1 space-y-2">
+            <%!-- Desktop sidebar --%>
+            <div class="hidden lg:block lg:col-span-1 space-y-2">
               <%= for {_cat_id, cat_name, cat_icon, check_ids} <- @categories do %>
                 <div class="glass-card overflow-hidden">
                   <div class="flex items-center gap-2 px-4 py-2.5 border-b border-white/5">

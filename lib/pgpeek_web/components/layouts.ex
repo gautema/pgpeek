@@ -11,25 +11,27 @@ defmodule PgpeekWeb.Layouts do
 
   def app(assigns) do
     ~H"""
-    <nav class="glass-card sticky top-0 z-40 mx-4 mt-4 mb-6 sm:mx-6 lg:mx-8">
-      <div class="flex h-14 items-center justify-between px-6">
-        <div class="flex items-center gap-8">
-          <a href="/" class="flex items-center gap-2 group">
-            <div class="flex items-center justify-center size-8 rounded-lg bg-blue-500/20">
-              <.icon name="hero-chart-bar-square" class="size-5 text-blue-400" />
+    <%!-- Top nav bar --%>
+    <nav class="glass-card sticky top-0 z-40 mx-3 mt-3 mb-4 sm:mx-6 sm:mt-4 sm:mb-6 lg:mx-8">
+      <div class="flex h-12 sm:h-14 items-center justify-between px-4 sm:px-6">
+        <div class="flex items-center gap-6 sm:gap-8">
+          <a href="/" class="flex items-center gap-2">
+            <div class="flex items-center justify-center size-7 sm:size-8 rounded-lg bg-blue-500/20">
+              <.icon name="hero-chart-bar-square" class="size-4 sm:size-5 text-blue-400" />
             </div>
-            <span class="text-base font-bold text-white tracking-tight">PgPeek</span>
+            <span class="text-sm sm:text-base font-bold text-white tracking-tight">PgPeek</span>
           </a>
+          <%!-- Desktop nav links --%>
           <div class="hidden sm:flex items-center gap-1">
             <.nav_link href="/" icon="hero-squares-2x2" label="Dashboard" />
             <.nav_link href="/queries" icon="hero-command-line" label="Queries" />
             <.nav_link href="/diagnose" icon="hero-wrench-screwdriver" label="Diagnose" />
           </div>
         </div>
-        <div class="flex items-center gap-4">
+        <div class="flex items-center gap-3 sm:gap-4">
           <.connection_indicator />
           <%= if @current_user do %>
-            <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2 sm:gap-3">
               <.link
                 navigate="/settings"
                 class="text-xs text-slate-500 hover:text-slate-300 transition-colors"
@@ -39,7 +41,7 @@ defmodule PgpeekWeb.Layouts do
               <.link
                 href="/logout"
                 method="delete"
-                class="text-xs text-slate-500 hover:text-slate-300 transition-colors"
+                class="hidden sm:inline text-xs text-slate-500 hover:text-slate-300 transition-colors"
               >
                 Sign out
               </.link>
@@ -49,9 +51,20 @@ defmodule PgpeekWeb.Layouts do
       </div>
     </nav>
 
-    <main class="mx-auto max-w-7xl px-4 pb-12 sm:px-6 lg:px-8">
+    <%!-- Main content with bottom padding for mobile nav --%>
+    <main class="mx-auto max-w-7xl px-3 pb-24 sm:px-6 sm:pb-12 lg:px-8">
       {render_slot(@inner_block)}
     </main>
+
+    <%!-- Mobile bottom nav --%>
+    <nav class="sm:hidden fixed bottom-0 inset-x-0 z-40 glass-card rounded-none border-t border-white/5">
+      <div class="flex items-center justify-around h-14 px-2">
+        <.mobile_nav_link href="/" icon="hero-squares-2x2" label="Dashboard" />
+        <.mobile_nav_link href="/queries" icon="hero-command-line" label="Queries" />
+        <.mobile_nav_link href="/diagnose" icon="hero-wrench-screwdriver" label="Diagnose" />
+        <.mobile_nav_link href="/settings" icon="hero-cog-6-tooth" label="Settings" />
+      </div>
+    </nav>
 
     <.flash_group flash={@flash} />
     """
@@ -65,6 +78,15 @@ defmodule PgpeekWeb.Layouts do
     >
       <.icon name={@icon} class="size-4" />
       {@label}
+    </a>
+    """
+  end
+
+  defp mobile_nav_link(assigns) do
+    ~H"""
+    <a href={@href} class="flex flex-col items-center gap-0.5 px-3 py-1.5 text-slate-400">
+      <.icon name={@icon} class="size-5" />
+      <span class="text-[10px] font-medium">{@label}</span>
     </a>
     """
   end
