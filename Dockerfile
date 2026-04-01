@@ -16,11 +16,15 @@ ENV MIX_ENV=prod
 
 RUN mix local.hex --force && mix local.rebar --force
 
+# Cache deps layer — only rebuilds when mix.exs/mix.lock change
 COPY mix.exs mix.lock ./
 RUN mix deps.get --only prod
+
+# Cache config layer — only rebuilds deps when config changes
+COPY config config
 RUN mix deps.compile
 
-COPY config config
+# Copy application code and compile
 COPY lib lib
 COPY priv priv
 COPY assets assets
