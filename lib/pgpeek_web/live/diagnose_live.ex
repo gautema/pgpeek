@@ -168,8 +168,15 @@ defmodule PgpeekWeb.DiagnoseLive do
       |> assign(:ai_loading, false)
       |> assign(:ai_error, nil)
       |> assign(:llm_configured, Pgpeek.QueryExplainer.configured?())
+      |> assign(:summary, nil)
+      |> assign(:summary_loading, false)
 
-    {:ok, socket}
+    if connected?(socket) and ProbeRepo.configured?() do
+      send(self(), :run_summary)
+      {:ok, assign(socket, :summary_loading, true)}
+    else
+      {:ok, socket}
+    end
   end
 
   @impl true
@@ -198,6 +205,17 @@ defmodule PgpeekWeb.DiagnoseLive do
   end
 
   @impl true
+  def handle_info(:run_summary, socket) do
+    summary = build_summary()
+
+    socket =
+      socket
+      |> assign(:summary, summary)
+      |> assign(:summary_loading, false)
+
+    {:noreply, socket}
+  end
+
   def handle_info(:run_ai_advise, socket) do
     check = get_check(socket.assigns.active_check)
 
@@ -270,6 +288,224 @@ defmodule PgpeekWeb.DiagnoseLive do
     end
   end
 
+  defp build_summary do
+    [
+      check_cache_hit(),
+      check_connections(),
+      check_long_running(),
+      check_unused_indexes(),
+      check_missing_fk_indexes(),
+      check_vacuum_health(),
+      check_blocking()
+    ]
+  end
+
+  defp check_cache_hit do
+    case Diagnostics.cache_hit_ratio() do
+      {:ok, [%{"ratio" => ratio} | _]} ->
+        pct = Decimal.to_float(ratio) * 100
+
+        cond do
+          pct >= 99.0 ->
+            %{label: "Cache Hit Ratio", value: "#{Float.round(pct, 2)}%", status: :ok}
+
+          pct >= 95.0 ->
+            %{
+              label: "Cache Hit Ratio",
+              value: "#{Float.round(pct, 2)}%",
+              status: :warn,
+              detail: "Below 99% — consider increasing shared_buffers"
+            }
+
+          true ->
+            %{
+              label: "Cache Hit Ratio",
+              value: "#{Float.round(pct, 2)}%",
+              status: :critical,
+              detail: "Below 95% — shared_buffers likely too small"
+            }
+        end
+
+      _ ->
+        %{label: "Cache Hit Ratio", value: "-", status: :unknown}
+    end
+  end
+
+  defp check_connections do
+    case Diagnostics.connection_summary() do
+      {:ok, [%{"total_connections" => total, "max_connections" => max} | _]} ->
+        pct = total / max * 100
+
+        cond do
+          pct < 70 ->
+            %{label: "Connections", value: "#{total}/#{max}", status: :ok}
+
+          pct < 90 ->
+            %{
+              label: "Connections",
+              value: "#{total}/#{max}",
+              status: :warn,
+              detail: "#{Float.round(pct, 0)}% of max — approaching limit"
+            }
+
+          true ->
+            %{
+              label: "Connections",
+              value: "#{total}/#{max}",
+              status: :critical,
+              detail: "#{Float.round(pct, 0)}% of max — add connection pooling"
+            }
+        end
+
+      _ ->
+        %{label: "Connections", value: "-", status: :unknown}
+    end
+  end
+
+  defp check_long_running do
+    case Diagnostics.long_running_queries(60) do
+      {:ok, rows} ->
+        count = length(rows)
+
+        cond do
+          count == 0 ->
+            %{label: "Long Running Queries", value: "None", status: :ok}
+
+          count <= 2 ->
+            %{
+              label: "Long Running Queries",
+              value: "#{count} query",
+              status: :warn,
+              detail: "Queries running > 60s"
+            }
+
+          true ->
+            %{
+              label: "Long Running Queries",
+              value: "#{count} queries",
+              status: :critical,
+              detail: "#{count} queries running > 60s"
+            }
+        end
+
+      _ ->
+        %{label: "Long Running Queries", value: "-", status: :unknown}
+    end
+  end
+
+  defp check_unused_indexes do
+    case Diagnostics.unused_indexes() do
+      {:ok, rows} ->
+        count = length(rows)
+
+        cond do
+          count == 0 ->
+            %{label: "Unused Indexes", value: "None", status: :ok}
+
+          count <= 5 ->
+            %{
+              label: "Unused Indexes",
+              value: "#{count} found",
+              status: :warn,
+              detail: "Wasting disk space and slowing writes"
+            }
+
+          true ->
+            %{
+              label: "Unused Indexes",
+              value: "#{count} found",
+              status: :warn,
+              detail: "Consider dropping unused indexes"
+            }
+        end
+
+      _ ->
+        %{label: "Unused Indexes", value: "-", status: :unknown}
+    end
+  end
+
+  defp check_missing_fk_indexes do
+    case Diagnostics.missing_fk_indexes() do
+      {:ok, rows} ->
+        count = length(rows)
+
+        cond do
+          count == 0 ->
+            %{label: "Missing FK Indexes", value: "None", status: :ok}
+
+          true ->
+            %{
+              label: "Missing FK Indexes",
+              value: "#{count} found",
+              status: :warn,
+              detail: "Can cause slow joins and cascading deletes"
+            }
+        end
+
+      _ ->
+        %{label: "Missing FK Indexes", value: "-", status: :unknown}
+    end
+  end
+
+  defp check_vacuum_health do
+    case Diagnostics.vacuum_stats() do
+      {:ok, rows} ->
+        bloated =
+          Enum.count(rows, fn row ->
+            dead = row["dead_tuples"] || 0
+            live = row["live_tuples"] || 0
+            live > 1000 and dead > 0 and dead / live > 0.1
+          end)
+
+        cond do
+          bloated == 0 ->
+            %{label: "Vacuum Health", value: "Healthy", status: :ok}
+
+          bloated <= 3 ->
+            %{
+              label: "Vacuum Health",
+              value: "#{bloated} bloated",
+              status: :warn,
+              detail: "Tables with >10% dead tuples"
+            }
+
+          true ->
+            %{
+              label: "Vacuum Health",
+              value: "#{bloated} bloated",
+              status: :critical,
+              detail: "Autovacuum may be falling behind"
+            }
+        end
+
+      _ ->
+        %{label: "Vacuum Health", value: "-", status: :unknown}
+    end
+  end
+
+  defp check_blocking do
+    case Diagnostics.blocking_queries() do
+      {:ok, rows} ->
+        count = length(rows)
+
+        cond do
+          count == 0 ->
+            %{label: "Blocking Queries", value: "None", status: :ok}
+
+          true ->
+            %{
+              label: "Blocking Queries",
+              value: "#{count} blocked",
+              status: :critical,
+              detail: "Queries waiting on locks"
+            }
+        end
+
+      _ ->
+        %{label: "Blocking Queries", value: "-", status: :unknown}
+    end
+  end
+
   defp get_check(check_id), do: Map.get(@checks, check_id, %{label: check_id, desc: ""})
 
   @impl true
@@ -297,6 +533,38 @@ defmodule PgpeekWeb.DiagnoseLive do
             </p>
           </div>
         <% else %>
+          <%!-- Summary --%>
+          <%= if @summary_loading do %>
+            <div class="glass-card p-8 text-center">
+              <div class="mx-auto flex items-center justify-center size-10 rounded-full bg-blue-500/10 mb-3">
+                <.icon name="hero-arrow-path" class="size-5 text-blue-400 animate-spin" />
+              </div>
+              <p class="text-sm text-slate-400">Running health checks...</p>
+            </div>
+          <% end %>
+          <%= if @summary do %>
+            <div class="glass-card overflow-hidden">
+              <div class="flex items-center gap-2 px-6 py-4 border-b border-white/5">
+                <.icon name="hero-shield-check" class="size-5 text-emerald-400" />
+                <h2 class="text-base font-semibold text-white">Health Summary</h2>
+              </div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 divide-y sm:divide-y-0 divide-white/5">
+                <%= for item <- @summary do %>
+                  <div class="flex items-start gap-3 px-5 py-4">
+                    <.status_dot status={item.status} />
+                    <div class="min-w-0">
+                      <p class="text-xs font-medium text-slate-500">{item.label}</p>
+                      <p class="text-sm font-semibold text-white mt-0.5">{item.value}</p>
+                      <%= if item[:detail] do %>
+                        <p class="text-xs text-slate-500 mt-0.5">{item.detail}</p>
+                      <% end %>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+
           <%!-- Mobile: horizontal scrollable check picker --%>
           <div class="lg:hidden space-y-3">
             <%= for {_cat_id, cat_name, _cat_icon, check_ids} <- @categories do %>
@@ -460,6 +728,24 @@ defmodule PgpeekWeb.DiagnoseLive do
         <% end %>
       </div>
     </Layouts.app>
+    """
+  end
+
+  attr :status, :atom, required: true
+
+  defp status_dot(assigns) do
+    {color, icon} =
+      case assigns.status do
+        :ok -> {"text-emerald-400", "hero-check-circle"}
+        :warn -> {"text-amber-400", "hero-exclamation-triangle"}
+        :critical -> {"text-red-400", "hero-x-circle"}
+        _ -> {"text-slate-500", "hero-question-mark-circle"}
+      end
+
+    assigns = assign(assigns, color: color, icon: icon)
+
+    ~H"""
+    <.icon name={@icon} class={"size-5 shrink-0 mt-0.5 #{@color}"} />
     """
   end
 
