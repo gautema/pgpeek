@@ -76,7 +76,7 @@ defmodule Pgpeek.QueryExplainer do
         ReqLLM.Context.user("Reply with exactly: OK")
       ])
 
-    case ReqLLM.generate_text(model, context, max_tokens: 10, temperature: 0) do
+    case ReqLLM.generate_text(model, context, max_tokens: 10, temperature: 0.0) do
       {:ok, _response} -> :ok
       {:error, reason} -> {:error, format_error(reason)}
     end
