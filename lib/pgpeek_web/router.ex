@@ -20,6 +20,7 @@ defmodule PgpeekWeb.Router do
     live "/", DashboardLive
     live "/queries", QueriesLive
     live "/queries/:query_id", QueryDetailLive
+    live "/diagnose", DiagnoseLive
   end
 
   # API endpoint for deploy markers

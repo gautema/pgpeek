@@ -22,6 +22,7 @@ defmodule PgpeekWeb.Layouts do
           <div class="hidden sm:flex items-center gap-1">
             <.nav_link href="/" icon="hero-squares-2x2" label="Dashboard" />
             <.nav_link href="/queries" icon="hero-command-line" label="Queries" />
+            <.nav_link href="/diagnose" icon="hero-wrench-screwdriver" label="Diagnose" />
           </div>
         </div>
         <div class="flex items-center gap-3">

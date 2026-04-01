@@ -50,6 +50,7 @@ defmodule PgpeekWeb.QueryDetailLive do
       Pgpeek.Schemas.QueryStat
       |> where(snapshot_id: ^snapshot.id, query_id: ^query_id)
       |> select([q], q.query_text)
+      |> limit(1)
       |> Pgpeek.Repo.one()
     end
   end
