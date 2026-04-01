@@ -75,81 +75,127 @@ defmodule PgpeekWeb.QueriesLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <div class="space-y-6">
-      <div class="flex items-center justify-between">
-        <h1 class="text-2xl font-bold text-zinc-900">All Queries</h1>
-        <%= if @snapshot do %>
-          <p class="text-sm text-zinc-500">
-            Snapshot from <%= Calendar.strftime(@snapshot.captured_at, "%Y-%m-%d %H:%M:%S UTC") %>
-          </p>
-        <% end %>
-      </div>
-
-      <div class="rounded-lg border border-zinc-200 bg-white">
-        <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-zinc-200">
-            <thead class="bg-zinc-50">
-              <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500">Query</th>
-                <th class="cursor-pointer px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-zinc-500 hover:text-zinc-700"
-                    phx-click="sort" phx-value-field="total_exec_time">
-                  Total Time <%= sort_indicator("total_exec_time", @sort_by, @sort_dir) %>
-                </th>
-                <th class="cursor-pointer px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-zinc-500 hover:text-zinc-700"
-                    phx-click="sort" phx-value-field="mean_exec_time">
-                  Mean Time <%= sort_indicator("mean_exec_time", @sort_by, @sort_dir) %>
-                </th>
-                <th class="cursor-pointer px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-zinc-500 hover:text-zinc-700"
-                    phx-click="sort" phx-value-field="calls">
-                  Calls <%= sort_indicator("calls", @sort_by, @sort_dir) %>
-                </th>
-                <th class="cursor-pointer px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-zinc-500 hover:text-zinc-700"
-                    phx-click="sort" phx-value-field="rows">
-                  Rows <%= sort_indicator("rows", @sort_by, @sort_dir) %>
-                </th>
-                <th class="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-zinc-500">Cache Hit %</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-zinc-200 bg-white">
-              <%= for query <- @queries do %>
-                <tr class="hover:bg-zinc-50">
-                  <td class="max-w-lg truncate px-6 py-4 text-sm font-mono text-zinc-700">
-                    <.link navigate={~p"/queries/#{query.query_id}"} class="hover:text-blue-600">
-                      <%= truncate_query(query.query_text) %>
-                    </.link>
-                  </td>
-                  <td class="whitespace-nowrap px-6 py-4 text-right text-sm text-zinc-700">
-                    <%= format_time(query.total_exec_time) %>
-                  </td>
-                  <td class="whitespace-nowrap px-6 py-4 text-right text-sm text-zinc-700">
-                    <%= format_time(query.mean_exec_time) %>
-                  </td>
-                  <td class="whitespace-nowrap px-6 py-4 text-right text-sm text-zinc-700">
-                    <%= format_number(query.calls) %>
-                  </td>
-                  <td class="whitespace-nowrap px-6 py-4 text-right text-sm text-zinc-700">
-                    <%= format_number(query.rows) %>
-                  </td>
-                  <td class="whitespace-nowrap px-6 py-4 text-right text-sm text-zinc-700">
-                    <%= cache_hit_ratio(query) %>%
-                  </td>
-                </tr>
+    <Layouts.app flash={@flash}>
+      <div class="space-y-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <h1 class="text-2xl font-bold text-white">All Queries</h1>
+            <p class="mt-1 text-sm text-slate-400">
+              <%= if @snapshot do %>
+                Snapshot from <%= Calendar.strftime(@snapshot.captured_at, "%Y-%m-%d %H:%M:%S UTC") %>
+                &middot; <%= length(@queries) %> queries
+              <% else %>
+                Waiting for first snapshot...
               <% end %>
-            </tbody>
-          </table>
-          <%= if @queries == [] do %>
-            <div class="px-6 py-12 text-center text-zinc-500">
-              No query data yet. Waiting for first snapshot...
-            </div>
-          <% end %>
+            </p>
+          </div>
+        </div>
+
+        <div class="glass-card overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full">
+              <thead>
+                <tr class="border-b border-white/5">
+                  <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">
+                    Query
+                  </th>
+                  <.sort_header field="total_exec_time" label="Total Time" current={@sort_by} dir={@sort_dir} />
+                  <.sort_header field="mean_exec_time" label="Mean Time" current={@sort_by} dir={@sort_dir} />
+                  <.sort_header field="calls" label="Calls" current={@sort_by} dir={@sort_dir} />
+                  <.sort_header field="rows" label="Rows" current={@sort_by} dir={@sort_dir} />
+                  <th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-500 hidden lg:table-cell">
+                    Cache Hit %
+                  </th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-white/5">
+                <%= for query <- @queries do %>
+                  <tr class="group hover:bg-white/[0.02] transition-colors">
+                    <td class="max-w-lg truncate px-6 py-3 text-sm font-mono text-slate-300">
+                      <.link navigate={~p"/queries/#{query.query_id}"} class="hover:text-blue-400 transition-colors">
+                        <%= truncate_query(query.query_text) %>
+                      </.link>
+                    </td>
+                    <td class="whitespace-nowrap px-4 py-3 text-right text-sm tabular-nums text-slate-300">
+                      <%= format_time(query.total_exec_time) %>
+                    </td>
+                    <td class="whitespace-nowrap px-4 py-3 text-right text-sm tabular-nums text-slate-400">
+                      <%= format_time(query.mean_exec_time) %>
+                    </td>
+                    <td class="whitespace-nowrap px-4 py-3 text-right text-sm tabular-nums text-slate-400">
+                      <%= format_number(query.calls) %>
+                    </td>
+                    <td class="whitespace-nowrap px-4 py-3 text-right text-sm tabular-nums text-slate-400">
+                      <%= format_number(query.rows) %>
+                    </td>
+                    <td class="whitespace-nowrap px-4 py-3 text-right text-sm tabular-nums hidden lg:table-cell">
+                      <.cache_badge ratio={cache_hit_ratio(query)} />
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+            <%= if @queries == [] do %>
+              <div class="px-6 py-16 text-center">
+                <div class="mx-auto flex items-center justify-center size-10 rounded-full bg-white/5 mb-3">
+                  <.icon name="hero-command-line" class="size-5 text-slate-500" />
+                </div>
+                <p class="text-sm text-slate-500">No query data yet. Waiting for first snapshot...</p>
+              </div>
+            <% end %>
+          </div>
         </div>
       </div>
-    </div>
+    </Layouts.app>
+    """
+  end
+
+  attr :field, :string, required: true
+  attr :label, :string, required: true
+  attr :current, :string, required: true
+  attr :dir, :string, required: true
+
+  defp sort_header(assigns) do
+    ~H"""
+    <th
+      class="cursor-pointer px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-500 hover:text-slate-300 transition-colors select-none"
+      phx-click="sort"
+      phx-value-field={@field}
+    >
+      <span class="inline-flex items-center gap-1">
+        {@label}
+        <%= if @field == @current do %>
+          <%= if @dir == "desc" do %>
+            <.icon name="hero-chevron-down-micro" class="size-3 text-blue-400" />
+          <% else %>
+            <.icon name="hero-chevron-up-micro" class="size-3 text-blue-400" />
+          <% end %>
+        <% end %>
+      </span>
+    </th>
+    """
+  end
+
+  attr :ratio, :float, required: true
+
+  defp cache_badge(assigns) do
+    color =
+      cond do
+        assigns.ratio >= 99.0 -> "text-emerald-400"
+        assigns.ratio >= 95.0 -> "text-blue-400"
+        assigns.ratio >= 90.0 -> "text-amber-400"
+        true -> "text-red-400"
+      end
+
+    assigns = assign(assigns, :color, color)
+
+    ~H"""
+    <span class={@color}><%= @ratio %>%</span>
     """
   end
 
   defp truncate_query(nil), do: "(unknown)"
-  defp truncate_query(q) when byte_size(q) > 100, do: String.slice(q, 0, 100) <> "..."
+  defp truncate_query(q) when byte_size(q) > 90, do: String.slice(q, 0, 90) <> "..."
   defp truncate_query(q), do: q
 
   defp format_time(nil), do: "-"
@@ -166,13 +212,5 @@ defmodule PgpeekWeb.QueriesLive do
     read = query.shared_blks_read || 0
     total = hit + read
     if total > 0, do: Float.round(hit / total * 100, 1), else: 0.0
-  end
-
-  defp sort_indicator(field, current_field, dir) do
-    if field == current_field do
-      if dir == "desc", do: raw("&darr;"), else: raw("&uarr;")
-    else
-      ""
-    end
   end
 end

@@ -1,60 +1,73 @@
 defmodule PgpeekWeb.Layouts do
-  @moduledoc """
-  This module holds layouts and related functionality
-  used by your application.
-  """
+  @moduledoc false
   use PgpeekWeb, :html
 
-  # Embed all files in layouts/* within this module.
-  # The default root.html.heex file contains the HTML
-  # skeleton of your application, namely HTML headers
-  # and other static content.
   embed_templates "layouts/*"
 
-  @doc """
-  Renders your app layout.
-
-  This function is typically invoked from every template,
-  and it often contains your application menu, sidebar,
-  or similar.
-
-  ## Examples
-
-      <Layouts.app flash={@flash}>
-        <h1>Content</h1>
-      </Layouts.app>
-
-  """
-  attr :flash, :map, required: true, doc: "the map of flash messages"
-
-  attr :current_scope, :map,
-    default: nil,
-    doc: "the current [scope](https://hexdocs.pm/phoenix/scopes.html)"
-
+  attr :flash, :map, required: true
+  attr :current_scope, :map, default: nil
   slot :inner_block, required: true
 
   def app(assigns) do
     ~H"""
-    <div>
+    <nav class="glass-card sticky top-0 z-40 mx-4 mt-4 mb-6 sm:mx-6 lg:mx-8">
+      <div class="flex h-14 items-center justify-between px-6">
+        <div class="flex items-center gap-8">
+          <a href="/" class="flex items-center gap-2 group">
+            <div class="flex items-center justify-center size-8 rounded-lg bg-blue-500/20">
+              <.icon name="hero-chart-bar-square" class="size-5 text-blue-400" />
+            </div>
+            <span class="text-base font-bold text-white tracking-tight">PgPeek</span>
+          </a>
+          <div class="hidden sm:flex items-center gap-1">
+            <.nav_link href="/" icon="hero-squares-2x2" label="Dashboard" />
+            <.nav_link href="/queries" icon="hero-command-line" label="Queries" />
+          </div>
+        </div>
+        <div class="flex items-center gap-3">
+          <.connection_indicator />
+        </div>
+      </div>
+    </nav>
+
+    <main class="mx-auto max-w-7xl px-4 pb-12 sm:px-6 lg:px-8">
       {render_slot(@inner_block)}
-    </div>
+    </main>
+
     <.flash_group flash={@flash} />
     """
   end
 
-  @doc """
-  Shows the flash group with standard titles and content.
+  defp nav_link(assigns) do
+    ~H"""
+    <a
+      href={@href}
+      class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
+    >
+      <.icon name={@icon} class="size-4" />
+      {@label}
+    </a>
+    """
+  end
 
-  ## Examples
+  defp connection_indicator(assigns) do
+    ~H"""
+    <div class="flex items-center gap-1.5 text-xs text-slate-500">
+      <span class="relative flex size-2">
+        <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+        <span class="relative inline-flex size-2 rounded-full bg-emerald-500"></span>
+      </span>
+      <span class="hidden sm:inline">Connected</span>
+    </div>
+    """
+  end
 
-      <.flash_group flash={@flash} />
-  """
-  attr :flash, :map, required: true, doc: "the map of flash messages"
-  attr :id, :string, default: "flash-group", doc: "the optional id of flash container"
+  attr :flash, :map, required: true
+  attr :id, :string, default: "flash-group"
 
   def flash_group(assigns) do
     ~H"""
-    <div id={@id} aria-live="polite">
+    <div id={@id} class="fixed top-4 right-4 z-50 space-y-2" aria-live="polite">
       <.flash kind={:info} flash={@flash} />
       <.flash kind={:error} flash={@flash} />
 
@@ -85,40 +98,4 @@ defmodule PgpeekWeb.Layouts do
     """
   end
 
-  @doc """
-  Provides dark vs light theme toggle based on themes defined in app.css.
-
-  See <head> in root.html.heex which applies the theme before page load.
-  """
-  def theme_toggle(assigns) do
-    ~H"""
-    <div class="card relative flex flex-row items-center border-2 border-base-300 bg-base-300 rounded-full">
-      <div class="absolute w-1/3 h-full rounded-full border-1 border-base-200 bg-base-100 brightness-200 left-0 [[data-theme=light]_&]:left-1/3 [[data-theme=dark]_&]:left-2/3 transition-[left]" />
-
-      <button
-        class="flex p-2 cursor-pointer w-1/3"
-        phx-click={JS.dispatch("phx:set-theme")}
-        data-phx-theme="system"
-      >
-        <.icon name="hero-computer-desktop-micro" class="size-4 opacity-75 hover:opacity-100" />
-      </button>
-
-      <button
-        class="flex p-2 cursor-pointer w-1/3"
-        phx-click={JS.dispatch("phx:set-theme")}
-        data-phx-theme="light"
-      >
-        <.icon name="hero-sun-micro" class="size-4 opacity-75 hover:opacity-100" />
-      </button>
-
-      <button
-        class="flex p-2 cursor-pointer w-1/3"
-        phx-click={JS.dispatch("phx:set-theme")}
-        data-phx-theme="dark"
-      >
-        <.icon name="hero-moon-micro" class="size-4 opacity-75 hover:opacity-100" />
-      </button>
-    </div>
-    """
-  end
 end

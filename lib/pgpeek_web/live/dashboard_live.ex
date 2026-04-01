@@ -85,125 +85,186 @@ defmodule PgpeekWeb.DashboardLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <div class="space-y-8">
-      <div class="flex items-center justify-between">
-        <h1 class="text-2xl font-bold text-zinc-900">Dashboard</h1>
-        <%= if @snapshot do %>
-          <p class="text-sm text-zinc-500">
-            Last snapshot: <%= Calendar.strftime(@snapshot.captured_at, "%Y-%m-%d %H:%M:%S UTC") %>
-          </p>
+    <Layouts.app flash={@flash}>
+      <div class="space-y-6">
+        <%!-- Header --%>
+        <div class="flex items-center justify-between">
+          <div>
+            <h1 class="text-2xl font-bold text-white">Dashboard</h1>
+            <p class="mt-1 text-sm text-slate-400">Postgres performance at a glance</p>
+          </div>
+          <%= if @snapshot do %>
+            <div class="flex items-center gap-2 text-xs text-slate-500">
+              <.icon name="hero-clock" class="size-3.5" />
+              <span>Last snapshot: <%= Calendar.strftime(@snapshot.captured_at, "%Y-%m-%d %H:%M:%S UTC") %></span>
+            </div>
+          <% end %>
+        </div>
+
+        <%= if not @configured do %>
+          <div class="glass-card p-8 text-center">
+            <div class="mx-auto flex items-center justify-center size-12 rounded-full bg-amber-500/10 mb-4">
+              <.icon name="hero-exclamation-triangle" class="size-6 text-amber-400" />
+            </div>
+            <h2 class="text-lg font-semibold text-white">No database configured</h2>
+            <p class="mt-2 text-sm text-slate-400 max-w-md mx-auto">
+              Set the <code class="px-1.5 py-0.5 rounded bg-white/5 text-amber-300 font-mono text-xs">DATABASE_URL</code>
+              environment variable to connect to your Postgres database.
+            </p>
+          </div>
+        <% else %>
+          <%!-- Stat Cards --%>
+          <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <.stat_card
+              title="Cache Hit Ratio"
+              value={"#{@db_stats.cache_hit_ratio}%"}
+              icon="hero-bolt"
+              color="emerald"
+              subtitle="Block reads from cache"
+            />
+            <.stat_card
+              title="Connections"
+              value={@connections |> Map.values() |> Enum.sum() |> to_string()}
+              icon="hero-signal"
+              color="blue"
+              subtitle={connection_summary(@connections)}
+            />
+            <.stat_card
+              title="Tracked Queries"
+              value={length(@top_queries) |> to_string()}
+              icon="hero-command-line"
+              color="violet"
+              subtitle="In latest snapshot"
+            />
+            <.stat_card
+              title="Snapshots"
+              value={if @snapshot, do: to_string(@snapshot.id), else: "0"}
+              icon="hero-camera"
+              color="amber"
+              subtitle="Total captured"
+            />
+          </div>
+
+          <%!-- Top Queries Table --%>
+          <div class="glass-card overflow-hidden">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-white/5">
+              <div class="flex items-center gap-2">
+                <.icon name="hero-fire" class="size-5 text-orange-400" />
+                <h2 class="text-base font-semibold text-white">Top Queries by Total Time</h2>
+              </div>
+              <.link navigate={~p"/queries"} class="text-xs font-medium text-blue-400 hover:text-blue-300 transition-colors">
+                View all &rarr;
+              </.link>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full">
+                <thead>
+                  <tr class="border-b border-white/5">
+                    <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Query</th>
+                    <th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-500">Total Time</th>
+                    <th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-500">Mean</th>
+                    <th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-500">Calls</th>
+                    <th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-500 hidden sm:table-cell">Delta</th>
+                    <th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-500 hidden md:table-cell">Rows</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-white/5">
+                  <%= for delta <- @deltas do %>
+                    <tr class="group hover:bg-white/[0.02] transition-colors">
+                      <td class="max-w-xs truncate px-6 py-3 text-sm font-mono text-slate-300">
+                        <.link navigate={~p"/queries/#{delta.stat.query_id}"} class="hover:text-blue-400 transition-colors">
+                          <%= truncate_query(delta.stat.query_text) %>
+                        </.link>
+                      </td>
+                      <td class="whitespace-nowrap px-4 py-3 text-right text-sm tabular-nums text-slate-300">
+                        <%= format_time(delta.stat.total_exec_time) %>
+                      </td>
+                      <td class="whitespace-nowrap px-4 py-3 text-right text-sm tabular-nums text-slate-400">
+                        <%= format_time(delta.stat.mean_exec_time) %>
+                      </td>
+                      <td class="whitespace-nowrap px-4 py-3 text-right text-sm tabular-nums text-slate-400">
+                        <%= format_number(delta.stat.calls) %>
+                      </td>
+                      <td class={"whitespace-nowrap px-4 py-3 text-right text-sm tabular-nums hidden sm:table-cell #{delta_color(delta.delta_calls)}"}>
+                        <%= if delta.delta_calls > 0 do %>
+                          <span class="inline-flex items-center gap-0.5">
+                            <.icon name="hero-arrow-up-micro" class="size-3" />
+                            <%= format_number(delta.delta_calls) %>
+                          </span>
+                        <% else %>
+                          <%= format_number(delta.delta_calls) %>
+                        <% end %>
+                      </td>
+                      <td class="whitespace-nowrap px-4 py-3 text-right text-sm tabular-nums text-slate-400 hidden md:table-cell">
+                        <%= format_number(delta.stat.rows) %>
+                      </td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+              <%= if @deltas == [] do %>
+                <div class="px-6 py-16 text-center">
+                  <div class="mx-auto flex items-center justify-center size-10 rounded-full bg-white/5 mb-3">
+                    <.icon name="hero-clock" class="size-5 text-slate-500" />
+                  </div>
+                  <p class="text-sm text-slate-500">No query data yet. Waiting for first snapshot...</p>
+                </div>
+              <% end %>
+            </div>
+          </div>
         <% end %>
       </div>
+    </Layouts.app>
+    """
+  end
 
-      <%= if not @configured do %>
-        <div class="rounded-lg border border-amber-200 bg-amber-50 p-6">
-          <h2 class="text-lg font-semibold text-amber-800">No database configured</h2>
-          <p class="mt-2 text-amber-700">
-            Set the <code class="bg-amber-100 px-1 rounded">DATABASE_URL</code> environment variable to connect to your Postgres database.
-          </p>
-        </div>
-      <% else %>
-        <!-- Stats Cards -->
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <.stat_card title="Cache Hit Ratio" value={"#{@db_stats.cache_hit_ratio}%"} subtitle="Block reads from cache" />
-          <.stat_card
-            title="Connections"
-            value={@connections |> Map.values() |> Enum.sum() |> to_string()}
-            subtitle={connection_summary(@connections)}
-          />
-          <.stat_card
-            title="Tracked Queries"
-            value={length(@top_queries) |> to_string()}
-            subtitle="In latest snapshot"
-          />
-          <.stat_card
-            title="Snapshots"
-            value={if @snapshot, do: to_string(@snapshot.id), else: "0"}
-            subtitle="Total captured"
-          />
-        </div>
+  attr :title, :string, required: true
+  attr :value, :string, required: true
+  attr :icon, :string, required: true
+  attr :color, :string, required: true
+  attr :subtitle, :string, default: nil
 
-        <!-- Top Queries -->
-        <div class="rounded-lg border border-zinc-200 bg-white">
-          <div class="border-b border-zinc-200 px-6 py-4">
-            <h2 class="text-lg font-semibold text-zinc-900">Top Queries by Total Time</h2>
-          </div>
-          <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-zinc-200">
-              <thead class="bg-zinc-50">
-                <tr>
-                  <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500">Query</th>
-                  <th class="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-zinc-500">Total Time</th>
-                  <th class="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-zinc-500">Mean Time</th>
-                  <th class="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-zinc-500">Calls</th>
-                  <th class="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-zinc-500">Δ Calls</th>
-                  <th class="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-zinc-500">Rows</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-zinc-200 bg-white">
-                <%= for delta <- @deltas do %>
-                  <tr class="hover:bg-zinc-50">
-                    <td class="max-w-md truncate px-6 py-4 text-sm font-mono text-zinc-700">
-                      <.link navigate={~p"/queries/#{delta.stat.query_id}"} class="hover:text-blue-600">
-                        <%= truncate_query(delta.stat.query_text) %>
-                      </.link>
-                    </td>
-                    <td class="whitespace-nowrap px-6 py-4 text-right text-sm text-zinc-700">
-                      <%= format_time(delta.stat.total_exec_time) %>
-                    </td>
-                    <td class="whitespace-nowrap px-6 py-4 text-right text-sm text-zinc-700">
-                      <%= format_time(delta.stat.mean_exec_time) %>
-                    </td>
-                    <td class="whitespace-nowrap px-6 py-4 text-right text-sm text-zinc-700">
-                      <%= format_number(delta.stat.calls) %>
-                    </td>
-                    <td class={"whitespace-nowrap px-6 py-4 text-right text-sm #{delta_color(delta.delta_calls)}"}>
-                      <%= if delta.delta_calls > 0, do: "+", else: "" %><%= format_number(delta.delta_calls) %>
-                    </td>
-                    <td class="whitespace-nowrap px-6 py-4 text-right text-sm text-zinc-700">
-                      <%= format_number(delta.stat.rows) %>
-                    </td>
-                  </tr>
-                <% end %>
-              </tbody>
-            </table>
-            <%= if @deltas == [] do %>
-              <div class="px-6 py-12 text-center text-zinc-500">
-                No query data yet. Waiting for first snapshot...
-              </div>
-            <% end %>
-          </div>
+  defp stat_card(assigns) do
+    color_classes = %{
+      "emerald" => "bg-emerald-500/10 text-emerald-400",
+      "blue" => "bg-blue-500/10 text-blue-400",
+      "violet" => "bg-violet-500/10 text-violet-400",
+      "amber" => "bg-amber-500/10 text-amber-400"
+    }
+
+    assigns = assign(assigns, :color_class, Map.get(color_classes, assigns.color, "bg-white/10 text-white"))
+
+    ~H"""
+    <div class="glass-card p-5">
+      <div class="flex items-center gap-3 mb-3">
+        <div class={"flex items-center justify-center size-8 rounded-lg #{@color_class}"}>
+          <.icon name={@icon} class="size-4" />
         </div>
+        <p class="text-xs font-medium uppercase tracking-wider text-slate-500">{@title}</p>
+      </div>
+      <p class="text-2xl font-bold text-white tabular-nums">{@value}</p>
+      <%= if @subtitle do %>
+        <p class="mt-1 text-xs text-slate-500">{@subtitle}</p>
       <% end %>
     </div>
     """
   end
 
-  defp stat_card(assigns) do
-    ~H"""
-    <div class="rounded-lg border border-zinc-200 bg-white p-6">
-      <p class="text-sm font-medium text-zinc-500"><%= @title %></p>
-      <p class="mt-2 text-3xl font-bold text-zinc-900"><%= @value %></p>
-      <p class="mt-1 text-sm text-zinc-500"><%= @subtitle %></p>
-    </div>
-    """
-  end
-
   defp truncate_query(nil), do: "(unknown)"
-  defp truncate_query(q) when byte_size(q) > 80, do: String.slice(q, 0, 80) <> "..."
+  defp truncate_query(q) when byte_size(q) > 70, do: String.slice(q, 0, 70) <> "..."
   defp truncate_query(q), do: q
 
-  defp format_time(nil), do: "—"
+  defp format_time(nil), do: "-"
   defp format_time(ms) when ms >= 1_000, do: "#{Float.round(ms / 1_000, 2)}s"
   defp format_time(ms), do: "#{Float.round(ms * 1.0, 2)}ms"
 
-  defp format_number(nil), do: "—"
+  defp format_number(nil), do: "-"
   defp format_number(n) when is_integer(n) and n >= 1_000_000, do: "#{Float.round(n / 1_000_000, 1)}M"
   defp format_number(n) when is_integer(n) and n >= 1_000, do: "#{Float.round(n / 1_000, 1)}K"
   defp format_number(n), do: to_string(n)
 
-  defp delta_color(n) when n > 0, do: "text-amber-600"
-  defp delta_color(_), do: "text-zinc-500"
+  defp delta_color(n) when n > 0, do: "text-amber-400"
+  defp delta_color(_), do: "text-slate-500"
 
   defp connection_summary(connections) do
     active = Map.get(connections, "active", 0)
