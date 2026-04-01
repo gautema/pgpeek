@@ -533,38 +533,6 @@ defmodule PgpeekWeb.DiagnoseLive do
             </p>
           </div>
         <% else %>
-          <%!-- Summary --%>
-          <%= if @summary_loading do %>
-            <div class="glass-card p-8 text-center">
-              <div class="mx-auto flex items-center justify-center size-10 rounded-full bg-blue-500/10 mb-3">
-                <.icon name="hero-arrow-path" class="size-5 text-blue-400 animate-spin" />
-              </div>
-              <p class="text-sm text-slate-400">Running health checks...</p>
-            </div>
-          <% end %>
-          <%= if @summary do %>
-            <div class="glass-card overflow-hidden">
-              <div class="flex items-center gap-2 px-6 py-4 border-b border-white/5">
-                <.icon name="hero-shield-check" class="size-5 text-emerald-400" />
-                <h2 class="text-base font-semibold text-white">Health Summary</h2>
-              </div>
-              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 divide-y sm:divide-y-0 divide-white/5">
-                <%= for item <- @summary do %>
-                  <div class="flex items-start gap-3 px-5 py-4">
-                    <.status_dot status={item.status} />
-                    <div class="min-w-0">
-                      <p class="text-xs font-medium text-slate-500">{item.label}</p>
-                      <p class="text-sm font-semibold text-white mt-0.5">{item.value}</p>
-                      <%= if item[:detail] do %>
-                        <p class="text-xs text-slate-500 mt-0.5">{item.detail}</p>
-                      <% end %>
-                    </div>
-                  </div>
-                <% end %>
-              </div>
-            </div>
-          <% end %>
-
           <%!-- Mobile: horizontal scrollable check picker --%>
           <div class="lg:hidden space-y-3">
             <%= for {_cat_id, cat_name, _cat_icon, check_ids} <- @categories do %>
@@ -716,12 +684,45 @@ defmodule PgpeekWeb.DiagnoseLive do
                     </div>
                   <% end %>
                 <% true -> %>
-                  <div class="glass-card p-16 text-center">
-                    <div class="mx-auto flex items-center justify-center size-10 rounded-full bg-white/5 mb-3">
-                      <.icon name="hero-cursor-arrow-rays" class="size-5 text-slate-500" />
+                  <%!-- Health Summary as default view --%>
+                  <%= if @summary_loading do %>
+                    <div class="glass-card p-16 text-center">
+                      <div class="mx-auto flex items-center justify-center size-10 rounded-full bg-blue-500/10 mb-3">
+                        <.icon name="hero-arrow-path" class="size-5 text-blue-400 animate-spin" />
+                      </div>
+                      <p class="text-sm text-slate-400">Running health checks...</p>
                     </div>
-                    <p class="text-sm text-slate-500">Select a diagnostic check from the sidebar</p>
-                  </div>
+                  <% end %>
+                  <%= if @summary do %>
+                    <div class="glass-card overflow-hidden">
+                      <div class="flex items-center gap-2 px-6 py-4 border-b border-white/5">
+                        <.icon name="hero-shield-check" class="size-5 text-emerald-400" />
+                        <h2 class="text-base font-semibold text-white">Health Summary</h2>
+                      </div>
+                      <div class="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 divide-white/5">
+                        <%= for item <- @summary do %>
+                          <div class="flex items-start gap-3 px-5 py-4">
+                            <.status_dot status={item.status} />
+                            <div class="min-w-0">
+                              <p class="text-xs font-medium text-slate-500">{item.label}</p>
+                              <p class="text-sm font-semibold text-white mt-0.5">{item.value}</p>
+                              <%= if item[:detail] do %>
+                                <p class="text-xs text-slate-500 mt-0.5">{item.detail}</p>
+                              <% end %>
+                            </div>
+                          </div>
+                        <% end %>
+                      </div>
+                    </div>
+                  <% end %>
+                  <%= if !@summary_loading and !@summary do %>
+                    <div class="glass-card p-16 text-center">
+                      <div class="mx-auto flex items-center justify-center size-10 rounded-full bg-white/5 mb-3">
+                        <.icon name="hero-cursor-arrow-rays" class="size-5 text-slate-500" />
+                      </div>
+                      <p class="text-sm text-slate-500">Select a diagnostic check from the sidebar</p>
+                    </div>
+                  <% end %>
               <% end %>
             </div>
           </div>
