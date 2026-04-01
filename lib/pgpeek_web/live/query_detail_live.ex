@@ -3,6 +3,7 @@ defmodule PgpeekWeb.QueryDetailLive do
 
   alias Pgpeek.Snapshots
   alias Pgpeek.Diagnostics
+  alias PgpeekWeb.ChartHelpers
 
   @impl true
   def mount(%{"query_id" => query_id}, _session, socket) do
@@ -88,9 +89,15 @@ defmodule PgpeekWeb.QueryDetailLive do
 
     query_text = get_query_text(query_id)
 
+    chart_config =
+      if length(history) >= 2 do
+        ChartHelpers.query_history_chart(history)
+      end
+
     socket
     |> assign(:history, history)
     |> assign(:latest, latest)
+    |> assign(:chart_config, chart_config)
     |> assign(:query_text, query_text)
   end
 
@@ -252,6 +259,27 @@ defmodule PgpeekWeb.QueryDetailLive do
               icon="hero-table-cells"
               color="emerald"
             />
+          </div>
+        <% end %>
+
+        <%!-- Trend Chart --%>
+        <%= if @chart_config do %>
+          <div class="glass-card overflow-hidden">
+            <div class="flex items-center gap-2 px-6 py-4 border-b border-white/5">
+              <.icon name="hero-chart-bar" class="size-5 text-blue-400" />
+              <h2 class="text-base font-semibold text-white">Trend</h2>
+            </div>
+            <div class="p-6">
+              <div style="height: 280px;">
+                <canvas
+                  id="query-chart"
+                  phx-hook="ChartHook"
+                  phx-update="ignore"
+                  data-chart={Jason.encode!(@chart_config)}
+                >
+                </canvas>
+              </div>
+            </div>
           </div>
         <% end %>
 

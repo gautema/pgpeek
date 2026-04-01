@@ -6,6 +6,17 @@ defmodule Pgpeek.Snapshots do
 
   import Ecto.Query
 
+  @doc "Get total query time per snapshot for the last N snapshots (for charts)."
+  def snapshot_trend(limit \\ 50) do
+    Snapshot
+    |> join(:left, [s], qs in QueryStat, on: qs.snapshot_id == s.id)
+    |> group_by([s], [s.id, s.captured_at])
+    |> order_by([s], desc: s.captured_at)
+    |> limit(^limit)
+    |> select([s, qs], {s.captured_at, sum(qs.total_exec_time)})
+    |> Repo.all()
+  end
+
   def list_snapshots(limit \\ 50) do
     Snapshot
     |> order_by(desc: :captured_at)

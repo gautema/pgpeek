@@ -3,6 +3,7 @@ defmodule PgpeekWeb.DashboardLive do
 
   alias Pgpeek.Snapshots
   alias Pgpeek.ProbeRepo
+  alias PgpeekWeb.ChartHelpers
 
   @impl true
   def mount(_params, _session, socket) do
@@ -67,6 +68,14 @@ defmodule PgpeekWeb.DashboardLive do
 
     {db_stats, connections} = load_pg_stats()
 
+    trend = Snapshots.snapshot_trend(30)
+
+    dashboard_chart =
+      if length(trend) >= 2 do
+        data = Enum.map(trend, fn {time, total} -> {time, (total || 0) / 1000.0} end)
+        ChartHelpers.dashboard_trend_chart(data)
+      end
+
     socket
     |> assign(:snapshot, snapshot)
     |> assign(:top_queries, top_queries)
@@ -76,6 +85,7 @@ defmodule PgpeekWeb.DashboardLive do
     |> assign(:db_stats, db_stats)
     |> assign(:connections, connections)
     |> assign(:configured, ProbeRepo.configured?())
+    |> assign(:dashboard_chart, dashboard_chart)
   end
 
   defp load_pg_stats do
@@ -174,6 +184,27 @@ defmodule PgpeekWeb.DashboardLive do
               subtitle="Total captured"
             />
           </div>
+
+          <%!-- Trend Chart --%>
+          <%= if @dashboard_chart do %>
+            <div class="glass-card overflow-hidden">
+              <div class="flex items-center gap-2 px-6 py-4 border-b border-white/5">
+                <.icon name="hero-chart-bar" class="size-5 text-emerald-400" />
+                <h2 class="text-base font-semibold text-white">Total Query Time Trend</h2>
+              </div>
+              <div class="p-6">
+                <div style="height: 200px;">
+                  <canvas
+                    id="dashboard-chart"
+                    phx-hook="ChartHook"
+                    phx-update="ignore"
+                    data-chart={Jason.encode!(@dashboard_chart)}
+                  >
+                  </canvas>
+                </div>
+              </div>
+            </div>
+          <% end %>
 
           <%!-- Anomalies --%>
           <%= if @n_plus_ones != [] or @regressions != [] do %>
