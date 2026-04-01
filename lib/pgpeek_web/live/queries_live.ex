@@ -65,6 +65,7 @@ defmodule PgpeekWeb.QueriesLive do
         "mean_exec_time" -> &(&1.mean_exec_time || 0)
         "calls" -> &(&1.calls || 0)
         "rows" -> &(&1.rows || 0)
+        "cache_hit" -> &cache_hit_ratio/1
         _ -> &(&1.total_exec_time || 0)
       end
 
@@ -114,9 +115,13 @@ defmodule PgpeekWeb.QueriesLive do
                   />
                   <.sort_header field="calls" label="Calls" current={@sort_by} dir={@sort_dir} />
                   <.sort_header field="rows" label="Rows" current={@sort_by} dir={@sort_dir} />
-                  <th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-500 hidden lg:table-cell">
-                    Cache Hit %
-                  </th>
+                  <.sort_header
+                    field="cache_hit"
+                    label="Cache Hit %"
+                    current={@sort_by}
+                    dir={@sort_dir}
+                    class="hidden lg:table-cell"
+                  />
                 </tr>
               </thead>
               <tbody class="divide-y divide-white/5">
@@ -168,11 +173,15 @@ defmodule PgpeekWeb.QueriesLive do
   attr :label, :string, required: true
   attr :current, :string, required: true
   attr :dir, :string, required: true
+  attr :class, :string, default: ""
 
   defp sort_header(assigns) do
     ~H"""
     <th
-      class="cursor-pointer px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-500 hover:text-slate-300 transition-colors select-none"
+      class={[
+        "cursor-pointer px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-500 hover:text-slate-300 transition-colors select-none",
+        @class
+      ]}
       phx-click="sort"
       phx-value-field={@field}
     >
