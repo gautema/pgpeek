@@ -262,7 +262,7 @@ defmodule Pgpeek.SnapshotsTest do
       assert latest.calls == 50
     end
 
-    test "filters out zero-activity periods" do
+    test "includes zero-activity periods" do
       s1 = create_snapshot(%{captured_at: ~U[2024-01-01 10:00:00Z]})
       s2 = create_snapshot(%{captured_at: ~U[2024-01-01 11:00:00Z]})
       s3 = create_snapshot(%{captured_at: ~U[2024-01-01 12:00:00Z]})
@@ -281,8 +281,8 @@ defmodule Pgpeek.SnapshotsTest do
       ])
 
       history = Snapshots.query_history("q1")
-      # Only 1 non-zero delta (s2→s3)
-      assert length(history) == 1
+      # 2 deltas: one zero (s1→s2) and one non-zero (s2→s3)
+      assert length(history) == 2
       assert hd(history).delta_calls == 10
     end
 

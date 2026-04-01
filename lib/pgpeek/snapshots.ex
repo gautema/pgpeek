@@ -224,9 +224,8 @@ defmodule Pgpeek.Snapshots do
       }
     end)
     |> Enum.reject(fn d ->
-      # Skip stats resets (negative deltas) and idle periods (all zeros)
-      d.delta_calls < 0 or d.delta_total_time < 0 or
-        (d.delta_calls == 0 and d.delta_total_time == 0.0)
+      # Skip stats resets (negative deltas)
+      d.delta_calls < 0 or d.delta_total_time < 0
     end)
     |> Enum.take(limit)
   end
