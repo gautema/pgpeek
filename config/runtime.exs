@@ -7,13 +7,16 @@ end
 config :pgpeek, PgpeekWeb.Endpoint,
   http: [port: String.to_integer(System.get_env("PORT", "4444"))]
 
-# DATABASE_URL is the monitored Postgres database (read-only connection)
-if database_url = System.get_env("DATABASE_URL") do
+# PGPEEK_DATABASE_URL is the monitored Postgres database (read-only connection)
+# Falls back to DATABASE_URL for backward compatibility
+if database_url = System.get_env("PGPEEK_DATABASE_URL") || System.get_env("DATABASE_URL") do
   config :pgpeek, Pgpeek.ProbeRepo, url: database_url
 end
 
-# ADMIN_PASSWORD is only used on first boot to seed the admin user
-if admin_password = System.get_env("ADMIN_PASSWORD") do
+# PGPEEK_ADMIN_PASSWORD is only used on first boot to seed the admin user
+# Falls back to ADMIN_PASSWORD for backward compatibility
+if admin_password =
+     System.get_env("PGPEEK_ADMIN_PASSWORD") || System.get_env("ADMIN_PASSWORD") do
   config :pgpeek, :admin_password, admin_password
 end
 
@@ -40,10 +43,11 @@ if data_dir = System.get_env("DATA_DIR") do
 end
 
 if config_env() == :prod do
+  # PGPEEK_SECRET_KEY_BASE / SECRET_KEY_BASE for signing cookies
   secret_key_base =
-    System.get_env("SECRET_KEY_BASE") ||
+    System.get_env("PGPEEK_SECRET_KEY_BASE") || System.get_env("SECRET_KEY_BASE") ||
       raise """
-      environment variable SECRET_KEY_BASE is missing.
+      environment variable PGPEEK_SECRET_KEY_BASE is missing.
       You can generate one by calling: mix phx.gen.secret
       """
 

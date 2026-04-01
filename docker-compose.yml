@@ -4,9 +4,9 @@ services:
     ports:
       - "4444:4444"
     environment:
-      DATABASE_URL: postgres://readonly_user:pass@host:5432/mydb
-      ADMIN_PASSWORD: changeme
-      SECRET_KEY_BASE: generate-me-with-mix-phx-gen-secret
+      PGPEEK_DATABASE_URL: postgres://readonly_user:pass@host:5432/mydb
+      PGPEEK_ADMIN_PASSWORD: changeme
+      PGPEEK_SECRET_KEY_BASE: generate-me-with-openssl-rand-hex-64
       PHX_HOST: localhost
     volumes:
       - ./data:/data

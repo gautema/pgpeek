@@ -20,14 +20,14 @@ A self-hosted Postgres performance dashboard. Connects to your database read-onl
 ```bash
 docker run -d --name pgpeek \
   -p 4444:4444 \
-  -e DATABASE_URL=postgres://readonly_user:pass@host:5432/mydb \
-  -e ADMIN_PASSWORD=changeme \
-  -e SECRET_KEY_BASE=$(openssl rand -hex 64) \
+  -e PGPEEK_DATABASE_URL=postgres://readonly_user:pass@host:5432/mydb \
+  -e PGPEEK_ADMIN_PASSWORD=changeme \
+  -e PGPEEK_SECRET_KEY_BASE=$(openssl rand -hex 64) \
   -v pgpeek_data:/data \
   ghcr.io/gautema/pgpeek:latest
 ```
 
-Visit [localhost:4444](http://localhost:4444) and log in with `admin@pgpeek.local` / your `ADMIN_PASSWORD`.
+Visit [localhost:4444](http://localhost:4444) and log in with `admin@pgpeek.local` / your `PGPEEK_ADMIN_PASSWORD`.
 
 ### Docker Compose
 
@@ -38,9 +38,9 @@ services:
     ports:
       - "4444:4444"
     environment:
-      DATABASE_URL: postgres://readonly_user:pass@host:5432/mydb
-      ADMIN_PASSWORD: changeme
-      SECRET_KEY_BASE: # generate with: openssl rand -hex 64
+      PGPEEK_DATABASE_URL: postgres://readonly_user:pass@host:5432/mydb
+      PGPEEK_ADMIN_PASSWORD: changeme
+      PGPEEK_SECRET_KEY_BASE: # generate with: openssl rand -hex 64
     volumes:
       - pgpeek_data:/data
 
@@ -61,9 +61,9 @@ mix phx.server
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `DATABASE_URL` | _(required)_ | Postgres connection string for the monitored database (read-only) |
-| `ADMIN_PASSWORD` | _(required on first boot)_ | Seeds the initial admin user. Ignored after first boot. |
-| `SECRET_KEY_BASE` | _(required in prod)_ | Phoenix secret for signing cookies. Generate with `mix phx.gen.secret` |
+| `PGPEEK_DATABASE_URL` | _(required)_ | Postgres connection string for the monitored database (read-only) |
+| `PGPEEK_ADMIN_PASSWORD` | _(required on first boot)_ | Seeds the initial admin user. Ignored after first boot. |
+| `PGPEEK_SECRET_KEY_BASE` | _(required in prod)_ | Phoenix secret for signing cookies. Generate with `openssl rand -hex 64` |
 | `PORT` | `4444` | HTTP port |
 | `PHX_HOST` | `localhost` | Hostname for URL generation |
 | `PHX_SCHEME` | `https` | URL scheme (`http` if behind a reverse proxy handling TLS) |
