@@ -187,14 +187,15 @@ defmodule Pgpeek.Snapshots do
       QueryStat
       |> join(:inner, [qs], s in Snapshot, on: qs.snapshot_id == s.id)
       |> where([qs], qs.query_id == ^query_id)
+      |> group_by([qs, s], [s.id, s.captured_at])
       |> order_by([qs, s], desc: s.captured_at)
       |> limit(^(limit + 1))
       |> select([qs, s], %{
         captured_at: s.captured_at,
-        calls: qs.calls,
-        mean_exec_time: qs.mean_exec_time,
-        total_exec_time: qs.total_exec_time,
-        rows: qs.rows
+        calls: sum(qs.calls),
+        mean_exec_time: fragment("sum(?) / nullif(sum(?), 0)", qs.total_exec_time, qs.calls),
+        total_exec_time: sum(qs.total_exec_time),
+        rows: sum(qs.rows)
       })
       |> Repo.all()
 
