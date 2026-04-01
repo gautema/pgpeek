@@ -83,7 +83,7 @@ defmodule PgpeekWeb.QueryDetailLiveTest do
 
   test "renders empty state for unknown query", %{conn: conn} do
     {:ok, view, _html} = live(conn, "/queries/unknown")
-    assert has_element?(view, "div", "No history for this query yet.")
+    assert has_element?(view, "div", "No recent activity detected for this query.")
   end
 
   test "shows explain plan button when query text exists", %{conn: conn} do

@@ -14,6 +14,7 @@ defmodule PgpeekWeb.QueriesLive do
       |> assign(:page_title, "Queries")
       |> assign(:sort_by, "total_exec_time")
       |> assign(:sort_dir, "desc")
+      |> assign(:filter, "all")
       |> load_queries()
 
     {:ok, socket}
@@ -42,12 +43,30 @@ defmodule PgpeekWeb.QueriesLive do
     {:noreply, socket}
   end
 
+  def handle_event("filter", %{"filter" => filter}, socket) do
+    socket =
+      socket
+      |> assign(:filter, filter)
+      |> load_queries()
+
+    {:noreply, socket}
+  end
+
   defp load_queries(socket) do
     snapshot = Snapshots.get_latest_snapshot()
 
     queries =
       if snapshot do
         stats = Snapshots.query_stats_for_snapshot(snapshot.id)
+
+        stats =
+          if socket.assigns.filter == "active" do
+            active_ids = get_active_query_ids(snapshot)
+            Enum.filter(stats, &(&1.query_id in active_ids))
+          else
+            stats
+          end
+
         sort_queries(stats, socket.assigns.sort_by, socket.assigns.sort_dir)
       else
         []
@@ -56,6 +75,28 @@ defmodule PgpeekWeb.QueriesLive do
     socket
     |> assign(:snapshot, snapshot)
     |> assign(:queries, queries)
+  end
+
+  defp get_active_query_ids(snapshot) do
+    prev = Snapshots.get_previous_snapshot(snapshot)
+
+    if prev do
+      prev_stats = Snapshots.query_stats_for_snapshot(prev.id)
+      prev_map = Map.new(prev_stats, &{&1.query_id, &1})
+
+      Snapshots.query_stats_for_snapshot(snapshot.id)
+      |> Enum.filter(fn stat ->
+        case Map.get(prev_map, stat.query_id) do
+          nil -> true
+          prev -> (stat.calls || 0) > (prev.calls || 0)
+        end
+      end)
+      |> Enum.map(& &1.query_id)
+      |> MapSet.new()
+    else
+      # Only one snapshot, show all
+      MapSet.new()
+    end
   end
 
   defp sort_queries(queries, field, dir) do
@@ -78,18 +119,47 @@ defmodule PgpeekWeb.QueriesLive do
     ~H"""
     <Layouts.app flash={@flash} current_user={@current_user}>
       <div class="space-y-6">
-        <div class="flex items-center justify-between">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 class="text-2xl font-bold text-white">All Queries</h1>
+            <h1 class="text-2xl font-bold text-white">Queries</h1>
             <p class="mt-1 text-sm text-slate-400">
               <%= if @snapshot do %>
-                Snapshot from {Calendar.strftime(@snapshot.captured_at, "%Y-%m-%d %H:%M:%S UTC")} &middot; {length(
-                  @queries
-                )} queries
+                {length(@queries)} queries &middot; {Calendar.strftime(
+                  @snapshot.captured_at,
+                  "%H:%M:%S UTC"
+                )}
               <% else %>
                 Waiting for first snapshot...
               <% end %>
             </p>
+          </div>
+          <div class="flex items-center gap-1 rounded-lg bg-white/5 p-0.5">
+            <button
+              phx-click="filter"
+              phx-value-filter="all"
+              class={[
+                "px-3 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer",
+                if(@filter == "all",
+                  do: "bg-white/10 text-white",
+                  else: "text-slate-400 hover:text-white"
+                )
+              ]}
+            >
+              All
+            </button>
+            <button
+              phx-click="filter"
+              phx-value-filter="active"
+              class={[
+                "px-3 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer",
+                if(@filter == "active",
+                  do: "bg-blue-500/15 text-blue-400",
+                  else: "text-slate-400 hover:text-white"
+                )
+              ]}
+            >
+              Recently Active
+            </button>
           </div>
         </div>
 

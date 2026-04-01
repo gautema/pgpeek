@@ -41,7 +41,7 @@ defmodule PgpeekWeb.QueriesLiveTest do
 
   test "renders queries page with no data", %{conn: conn} do
     {:ok, view, _html} = live(conn, "/queries")
-    assert has_element?(view, "h1", "All Queries")
+    assert has_element?(view, "h1", "Queries")
     assert has_element?(view, "div", "No query data yet")
   end
 
@@ -49,7 +49,7 @@ defmodule PgpeekWeb.QueriesLiveTest do
     create_snapshot_with_stats()
 
     {:ok, view, _html} = live(conn, "/queries")
-    assert has_element?(view, "h1", "All Queries")
+    assert has_element?(view, "h1", "Queries")
   end
 
   test "sorting by different columns", %{conn: conn} do

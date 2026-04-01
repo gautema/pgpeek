@@ -230,6 +230,23 @@ defmodule Pgpeek.Snapshots do
     |> Enum.take(limit)
   end
 
+  @doc "Get the latest cumulative stats for a query (for stat cards)."
+  def query_latest_stats(query_id) do
+    QueryStat
+    |> join(:inner, [qs], s in Snapshot, on: qs.snapshot_id == s.id)
+    |> where([qs], qs.query_id == ^query_id)
+    |> group_by([qs, s], [s.id, s.captured_at])
+    |> order_by([qs, s], desc: s.captured_at)
+    |> limit(1)
+    |> select([qs, s], %{
+      calls: sum(qs.calls),
+      mean_exec_time: fragment("sum(?) / nullif(sum(?), 0)", qs.total_exec_time, qs.calls),
+      total_exec_time: sum(qs.total_exec_time),
+      rows: sum(qs.rows)
+    })
+    |> Repo.one()
+  end
+
   @doc "Compute deltas between two snapshots for a given query."
   def compute_deltas(current_stats, previous_stats) do
     prev_map = Map.new(previous_stats, &{&1.query_id, &1})

@@ -79,23 +79,23 @@ defmodule PgpeekWeb.QueryDetailLive do
 
   defp load_query_data(socket) do
     query_id = socket.assigns.query_id
-    history = Snapshots.query_history(query_id)
+    all_history = Snapshots.query_history(query_id)
 
-    latest =
-      case history do
-        [h | _] -> h
-        [] -> nil
-      end
+    # Separate active periods from idle for display
+    active_history = Enum.filter(all_history, &(&1.delta_calls > 0 or &1.delta_total_time > 0))
+
+    # Use cumulative stats for the stat cards (always available)
+    latest = Snapshots.query_latest_stats(query_id)
 
     query_text = get_query_text(query_id)
 
     chart_config =
-      if length(history) >= 2 do
-        ChartHelpers.query_history_chart(history)
+      if length(active_history) >= 2 do
+        ChartHelpers.query_history_chart(active_history)
       end
 
     socket
-    |> assign(:history, history)
+    |> assign(:history, active_history)
     |> assign(:latest, latest)
     |> assign(:chart_config, chart_config)
     |> assign(:query_text, query_text)
@@ -350,7 +350,10 @@ defmodule PgpeekWeb.QueryDetailLive do
                 <div class="mx-auto flex items-center justify-center size-10 rounded-full bg-white/5 mb-3">
                   <.icon name="hero-chart-bar" class="size-5 text-slate-500" />
                 </div>
-                <p class="text-sm text-slate-500">No history for this query yet.</p>
+                <p class="text-sm text-slate-500">No recent activity detected for this query.</p>
+                <p class="text-xs text-slate-600 mt-1">
+                  The query hasn't been called since monitoring started, or stats were recently reset.
+                </p>
               </div>
             <% end %>
           </div>
