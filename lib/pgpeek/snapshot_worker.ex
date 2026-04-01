@@ -28,14 +28,35 @@ defmodule Pgpeek.SnapshotWorker do
       last_stats_reset: nil
     }
 
-    # Schedule first snapshot shortly after boot
     if Pgpeek.ProbeRepo.configured?() do
-      Process.send_after(self(), :take_snapshot, 5_000)
+      # Check if a recent snapshot exists to avoid duplicates on frequent deploys
+      delay = initial_delay(interval)
+      Process.send_after(self(), :take_snapshot, delay)
     else
       Logger.warning("PgPeek: No DATABASE_URL configured — snapshot worker idle")
     end
 
     {:ok, state}
+  end
+
+  # If a snapshot was taken recently (within half the interval), wait for the
+  # next regular cycle instead of snapshotting immediately on boot.
+  defp initial_delay(interval) do
+    case Pgpeek.Snapshots.get_latest_snapshot() do
+      nil ->
+        5_000
+
+      snapshot ->
+        age_ms = DateTime.diff(DateTime.utc_now(), snapshot.captured_at, :millisecond)
+        remaining = interval - age_ms
+
+        if remaining > 0 do
+          Logger.info("PgPeek: Recent snapshot exists, next in #{div(remaining, 1000)}s")
+          remaining
+        else
+          5_000
+        end
+    end
   end
 
   @impl true
