@@ -99,7 +99,7 @@ defmodule PgpeekWeb.ChartHelpers do
         labels: labels,
         datasets: [
           %{
-            label: "Total Query Time (s)",
+            label: "Query Time Added (s)",
             data: values,
             borderColor: "rgb(52, 211, 153)",
             backgroundColor: "rgba(52, 211, 153, 0.08)",

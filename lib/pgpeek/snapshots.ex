@@ -6,15 +6,30 @@ defmodule Pgpeek.Snapshots do
 
   import Ecto.Query
 
-  @doc "Get total query time per snapshot for the last N snapshots (for charts)."
+  @doc """
+  Get the change in total query time between consecutive snapshots.
+  Returns `[{captured_at, delta_total_time_ms}]` for charting database
+  load over time. Negative deltas (from stats resets) are filtered out.
+  """
   def snapshot_trend(limit \\ 50) do
-    Snapshot
-    |> join(:left, [s], qs in QueryStat, on: qs.snapshot_id == s.id)
-    |> group_by([s], [s.id, s.captured_at])
-    |> order_by([s], desc: s.captured_at)
-    |> limit(^limit)
-    |> select([s, qs], {s.captured_at, sum(qs.total_exec_time)})
-    |> Repo.all()
+    raw_totals =
+      Snapshot
+      |> join(:left, [s], qs in QueryStat, on: qs.snapshot_id == s.id)
+      |> group_by([s], [s.id, s.captured_at])
+      |> order_by([s], desc: s.captured_at)
+      |> limit(^(limit + 1))
+      |> select([s, qs], {s.captured_at, sum(qs.total_exec_time)})
+      |> Repo.all()
+      |> Enum.reverse()
+
+    # Compute deltas between consecutive snapshots
+    raw_totals
+    |> Enum.chunk_every(2, 1, :discard)
+    |> Enum.map(fn [{_time_prev, total_prev}, {time_curr, total_curr}] ->
+      delta = (total_curr || 0) - (total_prev || 0)
+      # Skip negative deltas (stats reset)
+      {time_curr, if(delta >= 0, do: delta, else: 0)}
+    end)
   end
 
   def list_snapshots(limit \\ 50) do

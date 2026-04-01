@@ -190,7 +190,8 @@ defmodule PgpeekWeb.DashboardLive do
             <div class="glass-card overflow-hidden">
               <div class="flex items-center gap-2 px-6 py-4 border-b border-white/5">
                 <.icon name="hero-chart-bar" class="size-5 text-emerald-400" />
-                <h2 class="text-base font-semibold text-white">Total Query Time Trend</h2>
+                <h2 class="text-base font-semibold text-white">Database Load</h2>
+                <span class="text-xs text-slate-500 ml-2">query time added per snapshot period</span>
               </div>
               <div class="p-6">
                 <div style="height: 200px;">
