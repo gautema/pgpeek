@@ -51,6 +51,15 @@ defmodule Pgpeek.SnapshotWorker do
   end
 
   defp do_snapshot(state) do
+    unless Pgpeek.ProbeRepo.configured?() do
+      Logger.warning("PgPeek: No DATABASE_URL configured — skipping snapshot")
+      state
+    else
+      do_snapshot_impl(state)
+    end
+  end
+
+  defp do_snapshot_impl(state) do
     Logger.info("PgPeek: Taking snapshot...")
 
     with {:ok, stats_result} <- query_pg_stat_statements(),

@@ -2,7 +2,8 @@ import Config
 
 config :pgpeek, Pgpeek.Repo,
   database: Path.expand("../data/pgpeek_test.db", __DIR__),
-  pool_size: 5
+  pool_size: 5,
+  pool: Ecto.Adapters.SQL.Sandbox
 
 config :bcrypt_elixir, :log_rounds, 1
 
