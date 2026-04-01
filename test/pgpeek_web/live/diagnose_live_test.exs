@@ -3,6 +3,8 @@ defmodule PgpeekWeb.DiagnoseLiveTest do
 
   import Phoenix.LiveViewTest
 
+  @moduletag :authenticated
+
   test "renders diagnose page", %{conn: conn} do
     {:ok, view, _html} = live(conn, "/diagnose")
     assert has_element?(view, "h1", "Diagnose")

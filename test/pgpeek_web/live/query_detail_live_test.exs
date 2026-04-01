@@ -6,6 +6,8 @@ defmodule PgpeekWeb.QueryDetailLiveTest do
   alias Pgpeek.Repo
   alias Pgpeek.Schemas.{Snapshot, QueryStat}
 
+  @moduletag :authenticated
+
   defp create_query_with_history do
     t1 = ~U[2024-01-01 10:00:00Z]
     t2 = ~U[2024-01-01 11:00:00Z]

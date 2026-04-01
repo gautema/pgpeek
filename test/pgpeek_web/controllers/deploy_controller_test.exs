@@ -4,6 +4,7 @@ defmodule PgpeekWeb.DeployControllerTest do
   alias Pgpeek.Repo
   alias Pgpeek.Schemas.Deploy
 
+  # API routes don't require auth
   describe "POST /api/deploys" do
     test "creates a deploy with description", %{conn: conn} do
       conn =

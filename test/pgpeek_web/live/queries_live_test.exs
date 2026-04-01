@@ -6,6 +6,8 @@ defmodule PgpeekWeb.QueriesLiveTest do
   alias Pgpeek.Repo
   alias Pgpeek.Schemas.{Snapshot, QueryStat}
 
+  @moduletag :authenticated
+
   defp create_snapshot_with_stats do
     now = DateTime.utc_now() |> DateTime.truncate(:second)
     snapshot = Repo.insert!(%Snapshot{captured_at: now})

@@ -1,8 +1,10 @@
 defmodule Pgpeek.Auth do
-  @moduledoc "Authentication helpers for the admin user."
+  @moduledoc "Authentication and user management."
 
   alias Pgpeek.Repo
   alias Pgpeek.Schemas.User
+
+  import Ecto.Query
 
   def seed_admin_user! do
     if Repo.aggregate(User, :count) == 0 do
@@ -38,5 +40,31 @@ defmodule Pgpeek.Auth do
     user
     |> Ecto.Changeset.change(last_login_at: DateTime.utc_now() |> DateTime.truncate(:second))
     |> Repo.update()
+  end
+
+  def change_password(user, attrs) do
+    user
+    |> User.changeset(attrs)
+    |> Repo.update()
+  end
+
+  def list_users do
+    User
+    |> order_by(asc: :email)
+    |> Repo.all()
+  end
+
+  def create_user(attrs) do
+    %User{}
+    |> User.changeset(attrs)
+    |> Repo.insert()
+  end
+
+  def delete_user(user) do
+    Repo.delete(user)
+  end
+
+  def user_count do
+    Repo.aggregate(User, :count)
   end
 end

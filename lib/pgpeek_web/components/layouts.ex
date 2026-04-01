@@ -6,6 +6,7 @@ defmodule PgpeekWeb.Layouts do
 
   attr :flash, :map, required: true
   attr :current_scope, :map, default: nil
+  attr :current_user, :map, default: nil
   slot :inner_block, required: true
 
   def app(assigns) do
@@ -25,8 +26,18 @@ defmodule PgpeekWeb.Layouts do
             <.nav_link href="/diagnose" icon="hero-wrench-screwdriver" label="Diagnose" />
           </div>
         </div>
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-4">
           <.connection_indicator />
+          <%= if @current_user do %>
+            <div class="flex items-center gap-3">
+              <.link navigate="/settings" class="text-xs text-slate-500 hover:text-slate-300 transition-colors">
+                <.icon name="hero-cog-6-tooth" class="size-4" />
+              </.link>
+              <.link href="/logout" method="delete" class="text-xs text-slate-500 hover:text-slate-300 transition-colors">
+                Sign out
+              </.link>
+            </div>
+          <% end %>
         </div>
       </div>
     </nav>
@@ -98,5 +109,4 @@ defmodule PgpeekWeb.Layouts do
     </div>
     """
   end
-
 end
