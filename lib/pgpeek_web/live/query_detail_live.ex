@@ -23,6 +23,13 @@ defmodule PgpeekWeb.QueryDetailLive do
   end
 
   @impl true
+  def handle_event("explain", _params, socket) do
+    socket = assign(socket, :explain_loading, true)
+    send(self(), :run_explain)
+    {:noreply, socket}
+  end
+
+  @impl true
   def handle_info({:new_snapshot, _id}, socket) do
     {:noreply, load_query_data(socket)}
   end
