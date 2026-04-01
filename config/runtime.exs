@@ -60,8 +60,12 @@ if config_env() == :prod do
     http: [ip: {0, 0, 0, 0, 0, 0, 0, 0}],
     secret_key_base: secret_key_base
 
-  # Disable force_ssl when running behind a reverse proxy on HTTP
-  if scheme == "http" do
-    config :pgpeek, PgpeekWeb.Endpoint, force_ssl: false
+  # Enable force_ssl unless running behind a reverse proxy on HTTP
+  if scheme != "http" do
+    config :pgpeek, PgpeekWeb.Endpoint,
+      force_ssl: [
+        rewrite_on: [:x_forwarded_proto],
+        exclude: [hosts: ["localhost", "127.0.0.1"]]
+      ]
   end
 end
