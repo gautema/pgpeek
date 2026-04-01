@@ -26,24 +26,37 @@ defmodule PgpeekWeb.DashboardLive do
   defp load_dashboard_data(socket) do
     snapshot = Snapshots.get_latest_snapshot()
 
-    {top_queries, deltas} =
+    {top_queries, deltas, n_plus_ones, regressions} =
       if snapshot do
         stats = Snapshots.top_queries_by_total_time(snapshot.id, 10)
+        all_stats = Snapshots.query_stats_for_snapshot(snapshot.id)
         prev = Snapshots.get_previous_snapshot(snapshot)
 
-        deltas =
+        {deltas, all_deltas, period_minutes} =
           if prev do
             prev_stats = Snapshots.query_stats_for_snapshot(prev.id)
-            Snapshots.compute_deltas(stats, prev_stats)
+            top_deltas = Snapshots.compute_deltas(stats, prev_stats)
+            full_deltas = Snapshots.compute_deltas(all_stats, prev_stats)
+
+            period =
+              DateTime.diff(snapshot.captured_at, prev.captured_at, :second) / 60.0
+
+            {top_deltas, full_deltas, period}
           else
-            Enum.map(stats, fn s ->
-              %{stat: s, delta_calls: s.calls || 0, delta_total_time: s.total_exec_time || 0, delta_mean_time: s.mean_exec_time || 0, new: true}
-            end)
+            top_deltas =
+              Enum.map(stats, fn s ->
+                %{stat: s, delta_calls: s.calls || 0, delta_total_time: s.total_exec_time || 0, delta_mean_time: s.mean_exec_time || 0, new: true}
+              end)
+
+            {top_deltas, top_deltas, 0}
           end
 
-        {stats, deltas}
+        n_plus_ones = Snapshots.detect_n_plus_one(all_deltas, period_minutes)
+        regressions = Snapshots.detect_regressions(all_stats)
+
+        {stats, deltas, n_plus_ones, regressions}
       else
-        {[], []}
+        {[], [], [], []}
       end
 
     {db_stats, connections} = load_pg_stats()
@@ -52,6 +65,8 @@ defmodule PgpeekWeb.DashboardLive do
     |> assign(:snapshot, snapshot)
     |> assign(:top_queries, top_queries)
     |> assign(:deltas, deltas)
+    |> assign(:n_plus_ones, n_plus_ones)
+    |> assign(:regressions, regressions)
     |> assign(:db_stats, db_stats)
     |> assign(:connections, connections)
     |> assign(:configured, ProbeRepo.configured?())
@@ -112,7 +127,9 @@ defmodule PgpeekWeb.DashboardLive do
               environment variable to connect to your Postgres database.
             </p>
           </div>
-        <% else %>
+        <% end %>
+
+        <%= if @configured or @snapshot do %>
           <%!-- Stat Cards --%>
           <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
             <.stat_card
@@ -144,6 +161,28 @@ defmodule PgpeekWeb.DashboardLive do
               subtitle="Total captured"
             />
           </div>
+
+          <%!-- Anomalies --%>
+          <%= if @n_plus_ones != [] or @regressions != [] do %>
+            <div class="space-y-4">
+              <%= for item <- @regressions do %>
+                <.anomaly_card
+                  kind="regression"
+                  query_id={item.query_id}
+                  query_text={item.query_text}
+                  detail={"Mean time #{format_time(item.mean_exec_time)} is more than 2x the 7-day baseline (#{format_number(item.calls)} calls)"}
+                />
+              <% end %>
+              <%= for item <- @n_plus_ones do %>
+                <.anomaly_card
+                  kind="n+1"
+                  query_id={item.stat.query_id}
+                  query_text={item.stat.query_text}
+                  detail={"#{format_number(item.delta_calls)} calls in the last period (mean #{format_time(item.stat.mean_exec_time)})"}
+                />
+              <% end %>
+            </div>
+          <% end %>
 
           <%!-- Top Queries Table --%>
           <div class="glass-card overflow-hidden">
@@ -246,6 +285,54 @@ defmodule PgpeekWeb.DashboardLive do
       <%= if @subtitle do %>
         <p class="mt-1 text-xs text-slate-500">{@subtitle}</p>
       <% end %>
+    </div>
+    """
+  end
+
+  attr :kind, :string, required: true
+  attr :query_id, :string, required: true
+  attr :query_text, :string, default: nil
+  attr :detail, :string, required: true
+
+  defp anomaly_card(assigns) do
+    {icon, color, label} =
+      case assigns.kind do
+        "regression" -> {"hero-arrow-trending-up", "red", "Regression"}
+        "n+1" -> {"hero-arrow-path-rounded-square", "amber", "Suspected N+1"}
+        _ -> {"hero-exclamation-triangle", "amber", "Anomaly"}
+      end
+
+    color_classes = %{
+      "red" => %{bg: "bg-red-500/10", border: "border-red-500/20", icon: "text-red-400", badge: "bg-red-500/10 text-red-400"},
+      "amber" => %{bg: "bg-amber-500/10", border: "border-amber-500/20", icon: "text-amber-400", badge: "bg-amber-500/10 text-amber-400"}
+    }
+
+    c = Map.get(color_classes, color)
+
+    assigns =
+      assigns
+      |> assign(:icon, icon)
+      |> assign(:label, label)
+      |> assign(:c, c)
+
+    ~H"""
+    <div class={"glass-card #{@c.border} border overflow-hidden"}>
+      <div class="flex items-start gap-4 px-5 py-4">
+        <div class={"flex items-center justify-center size-9 rounded-lg shrink-0 #{@c.bg}"}>
+          <.icon name={@icon} class={"size-5 #{@c.icon}"} />
+        </div>
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center gap-2 mb-1">
+            <span class={"inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold #{@c.badge}"}>
+              {@label}
+            </span>
+          </div>
+          <.link navigate={~p"/queries/#{@query_id}"} class="block text-sm font-mono text-slate-300 truncate hover:text-blue-400 transition-colors">
+            <%= truncate_query(@query_text) %>
+          </.link>
+          <p class="mt-1 text-xs text-slate-500">{@detail}</p>
+        </div>
+      </div>
     </div>
     """
   end

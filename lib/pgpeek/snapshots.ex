@@ -196,7 +196,9 @@ defmodule Pgpeek.Snapshots do
 
   @doc "Detect suspected N+1 queries."
   def detect_n_plus_one(deltas, period_minutes) do
-    Enum.filter(deltas, fn d ->
+    deltas
+    |> Enum.reject(fn d -> utility_query?(d.stat) end)
+    |> Enum.filter(fn d ->
       calls_per_min = if period_minutes > 0, do: d.delta_calls / period_minutes, else: 0
       mean_time = d.stat.mean_exec_time || 0
       query = d.stat.query_text || ""
@@ -211,13 +213,25 @@ defmodule Pgpeek.Snapshots do
   def detect_regressions(current_stats) do
     seven_days_ago = DateTime.add(DateTime.utc_now(), -7, :day)
 
-    Enum.filter(current_stats, fn stat ->
+    current_stats
+    |> Enum.reject(&utility_query?/1)
+    |> Enum.filter(fn stat ->
+      mean = stat.mean_exec_time || 0
       baseline = get_baseline_mean(stat.query_id, seven_days_ago)
 
-      baseline > 0 and
-        (stat.mean_exec_time || 0) > baseline * 2 and
+      baseline > 0.1 and
+        mean > 0.1 and
+        mean > baseline * 2 and
         (stat.calls || 0) >= 100
     end)
+  end
+
+  # Filter out transaction control and utility statements that aren't meaningful to track
+  defp utility_query?(stat) do
+    query = String.upcase(String.trim(stat.query_text || ""))
+
+    Enum.any?(["BEGIN", "COMMIT", "ROLLBACK", "SET ", "RESET ", "DEALLOCATE", "DISCARD"],
+      &String.starts_with?(query, &1))
   end
 
   defp get_baseline_mean(query_id, since) do
