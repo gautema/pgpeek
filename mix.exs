@@ -55,6 +55,7 @@ defmodule Pgpeek.MixProject do
        compile: false,
        depth: 1},
       {:req_llm, "~> 1.9"},
+      {:earmark, "~> 1.4"},
       {:ecto_sqlite3, "~> 0.17"},
       {:postgrex, "~> 0.19"},
       {:bcrypt_elixir, "~> 3.0"},

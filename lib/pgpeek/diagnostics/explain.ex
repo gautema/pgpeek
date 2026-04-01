@@ -5,18 +5,33 @@ defmodule Pgpeek.Diagnostics.Explain do
 
   Never uses EXPLAIN ANALYZE — that would execute the query,
   violating the read-only principle.
+
+  Uses a temporary PL/pgSQL function to run EXPLAIN via the simple
+  query protocol, since Postgrex's extended protocol treats $N
+  placeholders as bind parameters which is incompatible with
+  GENERIC_PLAN queries from pg_stat_statements.
   """
 
   alias Pgpeek.ProbeRepo
+
+  @create_explain_fn """
+  CREATE OR REPLACE FUNCTION pg_temp.pgpeek_explain(stmt text, fmt text)
+  RETURNS SETOF text LANGUAGE plpgsql AS $fn$
+  DECLARE
+    line text;
+  BEGIN
+    FOR line IN EXECUTE format('EXPLAIN (GENERIC_PLAN, %s) %s', fmt, stmt) LOOP
+      RETURN NEXT line;
+    END LOOP;
+  END;
+  $fn$
+  """
 
   @doc """
   Run EXPLAIN on a query from pg_stat_statements.
 
   Uses GENERIC_PLAN so parameter placeholders ($1, $2, ...) don't
   need actual values. Returns the plan as a formatted text string.
-
-  PostgreSQL 16+ supports GENERIC_PLAN directly on queries with $N
-  placeholders — no PREPARE/EXECUTE needed.
   """
   def explain(query_text) when is_binary(query_text) do
     unless ProbeRepo.configured?() do
@@ -53,16 +68,27 @@ defmodule Pgpeek.Diagnostics.Explain do
     end
   end
 
+  # Uses a pg_temp function so PL/pgSQL's EXECUTE runs the EXPLAIN
+  # via the simple query protocol, avoiding Postgrex's extended
+  # protocol which interprets $N as bind parameters.
   defp run_explain(query_text, format_opt) do
-    sql = "EXPLAIN (GENERIC_PLAN, #{format_opt}) #{query_text}"
+    ProbeRepo.with_conn(fn conn ->
+      case Postgrex.query(conn, @create_explain_fn, [], mode: :savepoint) do
+        {:ok, _} ->
+          Postgrex.query(
+            conn,
+            "SELECT * FROM pg_temp.pgpeek_explain($1, $2)",
+            [query_text, format_opt],
+            mode: :savepoint
+          )
 
-    case ProbeRepo.query(sql) do
+        {:error, error} ->
+          {:error, error}
+      end
+    end)
+    |> case do
       {:ok, %Postgrex.Result{rows: rows}} ->
-        plan =
-          rows
-          |> Enum.map(fn [line] -> line end)
-          |> Enum.join("\n")
-
+        plan = rows |> Enum.map(fn [line] -> line end) |> Enum.join("\n")
         {:ok, plan}
 
       {:error, error} ->
@@ -73,7 +99,7 @@ defmodule Pgpeek.Diagnostics.Explain do
   defp format_error(%Postgrex.Error{postgres: %{message: message, code: code}}) do
     case code do
       "25006" -> "Cannot explain write queries (INSERT/UPDATE/DELETE) on a read-only connection."
-      "42601" -> "Syntax error — this query may use internal syntax that cannot be prepared: #{message}"
+      "42601" -> "Syntax error — this query may use internal syntax that cannot be explained: #{message}"
       _ -> message
     end
   end

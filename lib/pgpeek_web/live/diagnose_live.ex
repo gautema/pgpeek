@@ -459,17 +459,10 @@ defmodule PgpeekWeb.DiagnoseLive do
   defp format_cell(val), do: to_string(val)
 
   defp render_markdown(text) when is_binary(text) do
-    text
-    |> Phoenix.HTML.html_escape()
-    |> Phoenix.HTML.safe_to_string()
-    |> String.replace(~r/\*\*(.+?)\*\*/, "<strong>\\1</strong>")
-    |> String.replace(~r/`([^`]+)`/, "<code>\\1</code>")
-    |> String.replace(~r/^### (.+)$/m, "<h3>\\1</h3>")
-    |> String.replace(~r/^## (.+)$/m, "<h2>\\1</h2>")
-    |> String.replace(~r/^- (.+)$/m, "<li>\\1</li>")
-    |> String.replace(~r/(<li>.*<\/li>\n?)+/s, fn match -> "<ul>#{match}</ul>" end)
-    |> String.replace("\n\n", "</p><p>")
-    |> then(&"<p>#{&1}</p>")
+    case Earmark.as_html(text, compact_output: true) do
+      {:ok, html, _} -> html
+      {:error, html, _} -> html
+    end
   end
 
   defp render_markdown(_), do: ""
