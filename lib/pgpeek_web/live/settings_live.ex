@@ -4,15 +4,6 @@ defmodule PgpeekWeb.SettingsLive do
   alias Pgpeek.Auth
   alias Pgpeek.Settings
 
-  @known_models [
-    "anthropic:claude-haiku-4-5-20251001", "anthropic:claude-sonnet-4-5-20250929",
-    "anthropic:claude-opus-4-20250514",
-    "openai:gpt-4.1-mini", "openai:gpt-4.1", "openai:gpt-5",
-    "openai:o3-mini", "openai:o4-mini",
-    "google:gemini-2.5-flash", "google:gemini-2.5-pro",
-    "groq:llama-3.3-70b-versatile",
-    "ollama:llama3", "ollama:mistral", "ollama:qwen2.5-coder"
-  ]
 
   @impl true
   def mount(_params, _session, socket) do
@@ -32,7 +23,6 @@ defmodule PgpeekWeb.SettingsLive do
       |> assign(:llm_api_key, llm_api_key)
       |> assign(:llm_testing, false)
       |> assign(:llm_test_result, nil)
-      |> assign(:known_models, @known_models)
 
     {:ok, socket}
   end
@@ -182,45 +172,27 @@ defmodule PgpeekWeb.SettingsLive do
             <.form for={%{}} phx-submit="save_llm" id="llm-form" class="max-w-lg space-y-4">
               <div>
                 <label for="llm-model" class="block text-sm font-medium text-slate-400 mb-1.5">Model</label>
-                <select
+                <input
+                  type="text"
                   name="llm[model]"
                   id="llm-model"
-                  class="w-full rounded-lg border border-white/10 bg-white/5 px-3.5 py-2.5 text-sm text-white focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/50 focus:outline-none transition-colors"
-                >
-                  <option value="" class="bg-slate-900">None (disabled)</option>
-                  <optgroup label="Anthropic" class="bg-slate-900">
-                    <option value="anthropic:claude-haiku-4-5-20251001" selected={@llm_model == "anthropic:claude-haiku-4-5-20251001"} class="bg-slate-900">Claude Haiku 4.5 (fast, cheap)</option>
-                    <option value="anthropic:claude-sonnet-4-5-20250929" selected={@llm_model == "anthropic:claude-sonnet-4-5-20250929"} class="bg-slate-900">Claude Sonnet 4.5 (balanced)</option>
-                    <option value="anthropic:claude-opus-4-20250514" selected={@llm_model == "anthropic:claude-opus-4-20250514"} class="bg-slate-900">Claude Opus 4 (best)</option>
-                  </optgroup>
-                  <optgroup label="OpenAI" class="bg-slate-900">
-                    <option value="openai:gpt-4.1-mini" selected={@llm_model == "openai:gpt-4.1-mini"} class="bg-slate-900">GPT-4.1 Mini (fast, cheap)</option>
-                    <option value="openai:gpt-4.1" selected={@llm_model == "openai:gpt-4.1"} class="bg-slate-900">GPT-4.1 (balanced)</option>
-                    <option value="openai:gpt-5" selected={@llm_model == "openai:gpt-5"} class="bg-slate-900">GPT-5 (best)</option>
-                    <option value="openai:o3-mini" selected={@llm_model == "openai:o3-mini"} class="bg-slate-900">o3-mini (reasoning)</option>
-                    <option value="openai:o4-mini" selected={@llm_model == "openai:o4-mini"} class="bg-slate-900">o4-mini (reasoning)</option>
-                  </optgroup>
-                  <optgroup label="Google" class="bg-slate-900">
-                    <option value="google:gemini-2.5-flash" selected={@llm_model == "google:gemini-2.5-flash"} class="bg-slate-900">Gemini 2.5 Flash (fast)</option>
-                    <option value="google:gemini-2.5-pro" selected={@llm_model == "google:gemini-2.5-pro"} class="bg-slate-900">Gemini 2.5 Pro</option>
-                  </optgroup>
-                  <optgroup label="Groq" class="bg-slate-900">
-                    <option value="groq:llama-3.3-70b-versatile" selected={@llm_model == "groq:llama-3.3-70b-versatile"} class="bg-slate-900">Llama 3.3 70B (fast, free tier)</option>
-                  </optgroup>
-                  <optgroup label="Local (Ollama)" class="bg-slate-900">
-                    <option value="ollama:llama3" selected={@llm_model == "ollama:llama3"} class="bg-slate-900">Llama 3 (no API key needed)</option>
-                    <option value="ollama:mistral" selected={@llm_model == "ollama:mistral"} class="bg-slate-900">Mistral (no API key needed)</option>
-                    <option value="ollama:qwen2.5-coder" selected={@llm_model == "ollama:qwen2.5-coder"} class="bg-slate-900">Qwen 2.5 Coder (no API key needed)</option>
-                  </optgroup>
-                  <%= if @llm_model != "" and not Enum.member?(@known_models, @llm_model) do %>
-                    <optgroup label="Custom" class="bg-slate-900">
-                      <option value={@llm_model} selected class="bg-slate-900">{@llm_model}</option>
-                    </optgroup>
-                  <% end %>
-                </select>
-                <p class="mt-1.5 text-xs text-slate-500">
-                  Or set a custom model via the <code class="text-slate-400">LLM_MODEL</code> env var using <code class="text-slate-400">provider:model-id</code> format.
-                </p>
+                  value={@llm_model}
+                  class="w-full rounded-lg border border-white/10 bg-white/5 px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/50 focus:outline-none transition-colors font-mono"
+                  placeholder="anthropic:claude-sonnet-4-5-20250929"
+                />
+                <div class="mt-2 text-xs text-slate-500 space-y-1">
+                  <p>
+                    Format: <code class="text-slate-400">provider:model-id</code>. Leave empty to disable.
+                  </p>
+                  <p>Find model IDs from your provider:</p>
+                  <ul class="list-disc list-inside ml-1 space-y-0.5 text-slate-500">
+                    <li><span class="text-slate-400">Anthropic:</span> <code class="text-slate-400">anthropic:</code> + ID from docs.anthropic.com/en/docs/about-claude/models</li>
+                    <li><span class="text-slate-400">OpenAI:</span> <code class="text-slate-400">openai:</code> + ID from platform.openai.com/docs/models</li>
+                    <li><span class="text-slate-400">Google:</span> <code class="text-slate-400">google:</code> + ID from ai.google.dev/gemini-api/docs/models</li>
+                    <li><span class="text-slate-400">Groq:</span> <code class="text-slate-400">groq:</code> + ID from console.groq.com/docs/models</li>
+                    <li><span class="text-slate-400">Ollama:</span> <code class="text-slate-400">ollama:</code> + name from <code class="text-slate-400">ollama list</code> (no API key needed)</li>
+                  </ul>
+                </div>
               </div>
               <div>
                 <label for="llm-api-key" class="block text-sm font-medium text-slate-400 mb-1.5">API Key</label>
