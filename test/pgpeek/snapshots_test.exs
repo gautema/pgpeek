@@ -138,6 +138,47 @@ defmodule Pgpeek.SnapshotsTest do
       snapshot = create_snapshot()
       assert :ok = Snapshots.insert_query_stats(snapshot.id, [])
     end
+
+    test "aggregates duplicate queryids into a single row" do
+      snapshot = create_snapshot()
+
+      rows = [
+        %{
+          "queryid" => 123, "query" => "SELECT 1",
+          "calls" => 100, "mean_exec_time" => 1.0, "total_exec_time" => 100.0,
+          "min_exec_time" => 0.5, "max_exec_time" => 5.0, "stddev_exec_time" => 0.8,
+          "rows" => 100, "shared_blks_hit" => 50, "shared_blks_read" => 5
+        },
+        %{
+          "queryid" => 123, "query" => "SELECT 1",
+          "calls" => 200, "mean_exec_time" => 2.0, "total_exec_time" => 400.0,
+          "min_exec_time" => 0.3, "max_exec_time" => 8.0, "stddev_exec_time" => 1.0,
+          "rows" => 200, "shared_blks_hit" => 80, "shared_blks_read" => 10
+        },
+        %{
+          "queryid" => 123, "query" => "SELECT 1",
+          "calls" => 50, "mean_exec_time" => 0.5, "total_exec_time" => 25.0,
+          "min_exec_time" => 0.1, "max_exec_time" => 3.0, "stddev_exec_time" => 0.5,
+          "rows" => 50, "shared_blks_hit" => 20, "shared_blks_read" => 2
+        }
+      ]
+
+      assert :ok = Snapshots.insert_query_stats(snapshot.id, rows)
+
+      stats = Repo.all(from qs in QueryStat, where: qs.snapshot_id == ^snapshot.id)
+      assert length(stats) == 1
+
+      stat = hd(stats)
+      assert stat.calls == 350
+      assert stat.total_exec_time == 525.0
+      assert stat.rows == 350
+      assert stat.shared_blks_hit == 150
+      assert stat.shared_blks_read == 17
+      assert stat.min_exec_time == 0.1
+      assert stat.max_exec_time == 8.0
+      # mean should be total / calls
+      assert_in_delta stat.mean_exec_time, 525.0 / 350, 0.001
+    end
   end
 
   describe "top_queries_by_total_time/2" do

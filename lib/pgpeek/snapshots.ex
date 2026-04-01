@@ -35,22 +35,38 @@ defmodule Pgpeek.Snapshots do
   end
 
   def insert_query_stats(snapshot_id, stats_rows) do
+    # pg_stat_statements can have multiple rows per queryid
+    # (different users, databases, or toplevel flags).
+    # Aggregate them into a single row per queryid.
     entries =
-      Enum.map(stats_rows, fn row ->
+      stats_rows
+      |> Enum.group_by(fn row -> row["queryid"] end)
+      |> Enum.map(fn {_queryid, rows} ->
+        first = hd(rows)
+
         %{
           snapshot_id: snapshot_id,
-          query_id: to_string(row["queryid"]),
-          query_text: row["query"],
-          calls: row["calls"],
-          mean_exec_time: row["mean_exec_time"],
-          total_exec_time: row["total_exec_time"],
-          min_exec_time: row["min_exec_time"],
-          max_exec_time: row["max_exec_time"],
-          stddev_exec_time: row["stddev_exec_time"],
-          rows: row["rows"],
-          shared_blks_hit: row["shared_blks_hit"],
-          shared_blks_read: row["shared_blks_read"]
+          query_id: to_string(first["queryid"]),
+          query_text: first["query"],
+          calls: rows |> Enum.map(& &1["calls"]) |> Enum.sum(),
+          total_exec_time: rows |> Enum.map(& &1["total_exec_time"]) |> sum_floats(),
+          mean_exec_time: nil,
+          min_exec_time: rows |> Enum.map(& &1["min_exec_time"]) |> min_floats(),
+          max_exec_time: rows |> Enum.map(& &1["max_exec_time"]) |> max_floats(),
+          stddev_exec_time: first["stddev_exec_time"],
+          rows: rows |> Enum.map(& &1["rows"]) |> Enum.sum(),
+          shared_blks_hit: rows |> Enum.map(& &1["shared_blks_hit"]) |> Enum.sum(),
+          shared_blks_read: rows |> Enum.map(& &1["shared_blks_read"]) |> Enum.sum()
         }
+      end)
+      |> Enum.map(fn entry ->
+        # Compute mean from aggregated totals
+        mean =
+          if entry.calls > 0,
+            do: entry.total_exec_time / entry.calls,
+            else: 0.0
+
+        %{entry | mean_exec_time: mean}
       end)
 
     # Insert in batches to avoid SQLite limits
@@ -62,6 +78,10 @@ defmodule Pgpeek.Snapshots do
 
     :ok
   end
+
+  defp sum_floats(vals), do: Enum.reduce(vals, 0.0, &((&1 || 0.0) + &2))
+  defp min_floats(vals), do: vals |> Enum.reject(&is_nil/1) |> Enum.min(fn -> 0.0 end)
+  defp max_floats(vals), do: vals |> Enum.reject(&is_nil/1) |> Enum.max(fn -> 0.0 end)
 
   def top_queries_by_total_time(snapshot_id, limit \\ 10) do
     QueryStat
