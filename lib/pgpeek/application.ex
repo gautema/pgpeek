@@ -18,7 +18,8 @@ defmodule Pgpeek.Application do
     opts = [strategy: :one_for_one, name: Pgpeek.Supervisor]
     result = Supervisor.start_link(children, opts)
 
-    # Seed admin user on first boot
+    # Run migrations and seed admin user on first boot
+    migrate!()
     Pgpeek.Auth.seed_admin_user!()
 
     result
@@ -28,5 +29,9 @@ defmodule Pgpeek.Application do
   def config_change(changed, _new, removed) do
     PgpeekWeb.Endpoint.config_change(changed, removed)
     :ok
+  end
+
+  defp migrate! do
+    Ecto.Migrator.run(Pgpeek.Repo, :up, all: true)
   end
 end
