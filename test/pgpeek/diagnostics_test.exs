@@ -1,7 +1,14 @@
 defmodule Pgpeek.DiagnosticsTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   alias Pgpeek.Diagnostics
+
+  setup do
+    original = Application.get_env(:pgpeek, Pgpeek.ProbeRepo)
+    Application.put_env(:pgpeek, Pgpeek.ProbeRepo, [])
+    on_exit(fn -> Application.put_env(:pgpeek, Pgpeek.ProbeRepo, original || []) end)
+    :ok
+  end
 
   # Without a real Postgres connection, all diagnostics return {:error, :not_configured}.
   # These tests verify the facade delegates correctly to all sub-modules.

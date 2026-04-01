@@ -46,10 +46,14 @@ defmodule Pgpeek.Diagnostics.Explain do
   # Steps: PREPARE with param types -> EXPLAIN the prepared stmt -> DEALLOCATE
   defp do_explain(query_text, format_opt) do
     # pg_stat_statements truncates long queries — these can't be explained
-    if String.ends_with?(String.trim(query_text), "...") do
-      {:error, "Query text is truncated by pg_stat_statements and cannot be explained. Increase track_activity_query_size in postgresql.conf."}
-    else
-      run_explain_sequence(query_text, format_opt)
+    trimmed = String.trim(query_text)
+
+    cond do
+      String.ends_with?(trimmed, "...") ->
+        {:error, "Query text is truncated by pg_stat_statements and cannot be explained. Increase track_activity_query_size in postgresql.conf."}
+
+      true ->
+        run_explain_sequence(query_text, format_opt)
     end
   end
 
@@ -83,6 +87,14 @@ defmodule Pgpeek.Diagnostics.Explain do
       {:error, error} ->
         # PREPARE failed — don't try to deallocate
         {:error, format_error(error)}
+    end
+  end
+
+  defp format_error(%Postgrex.Error{postgres: %{message: message, code: code}}) do
+    case code do
+      "25006" -> "Cannot explain write queries (INSERT/UPDATE/DELETE) on a read-only connection."
+      "42601" -> "Syntax error — this query may use internal syntax that cannot be prepared: #{message}"
+      _ -> message
     end
   end
 

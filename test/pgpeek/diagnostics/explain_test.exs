@@ -1,7 +1,14 @@
 defmodule Pgpeek.Diagnostics.ExplainTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   alias Pgpeek.Diagnostics.Explain
+
+  setup do
+    original = Application.get_env(:pgpeek, Pgpeek.ProbeRepo)
+    Application.put_env(:pgpeek, Pgpeek.ProbeRepo, [])
+    on_exit(fn -> Application.put_env(:pgpeek, Pgpeek.ProbeRepo, original || []) end)
+    :ok
+  end
 
   describe "explain/1" do
     test "returns not_configured when ProbeRepo has no URL" do
@@ -12,10 +19,7 @@ defmodule Pgpeek.Diagnostics.ExplainTest do
       assert {:error, "No query text available"} = Explain.explain(nil)
     end
 
-    test "extract_param_types handles queries with parameters" do
-      # Test the internal helper indirectly — when ProbeRepo is not configured,
-      # we get :not_configured before reaching truncation check.
-      # This tests the nil and not_configured paths are correct.
+    test "returns not_configured for queries with parameters" do
       assert {:error, :not_configured} = Explain.explain("SELECT $1, $2")
     end
   end
