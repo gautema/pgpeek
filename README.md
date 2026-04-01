@@ -12,38 +12,49 @@ A self-hosted Postgres performance dashboard. Connects to your database read-onl
 - **N+1 detection** — flags high-frequency, low-latency parameterized queries
 - **Regression detection** — alerts when query mean time exceeds 2x the 7-day baseline
 - **Deploy markers** — `POST /api/deploys` to annotate when deploys happened
+- **AI explanations** — optional LLM integration for plain English query explanations and optimization suggestions (OpenAI, Anthropic, Ollama, etc.)
 - **Auth** — session-based login, user management, password changes
 
-## Quick start
+## Quick start (Docker)
 
 ```bash
-# Set environment variables
-export DATABASE_URL=postgres://readonly_user:pass@localhost:5432/mydb
-export ADMIN_PASSWORD=changeme
-
-# Run
-mix setup
-mix phx.server
+docker run -d --name pgpeek \
+  -p 4444:4444 \
+  -e DATABASE_URL=postgres://readonly_user:pass@host:5432/mydb \
+  -e ADMIN_PASSWORD=changeme \
+  -e SECRET_KEY_BASE=$(openssl rand -hex 64) \
+  -v pgpeek_data:/data \
+  ghcr.io/gautema/pgpeek:latest
 ```
 
 Visit [localhost:4444](http://localhost:4444) and log in with `admin@pgpeek.local` / your `ADMIN_PASSWORD`.
 
-## Docker
+### Docker Compose
 
-```bash
-docker compose up
+```yaml
+services:
+  pgpeek:
+    image: ghcr.io/gautema/pgpeek:latest
+    ports:
+      - "4444:4444"
+    environment:
+      DATABASE_URL: postgres://readonly_user:pass@host:5432/mydb
+      ADMIN_PASSWORD: changeme
+      SECRET_KEY_BASE: # generate with: openssl rand -hex 64
+    volumes:
+      - pgpeek_data:/data
+
+volumes:
+  pgpeek_data:
 ```
 
-Or build and run directly:
+### From source
 
 ```bash
-docker build -t pgpeek .
-docker run -p 4444:4444 \
-  -e DATABASE_URL=postgres://readonly_user:pass@host:5432/mydb \
-  -e ADMIN_PASSWORD=changeme \
-  -e SECRET_KEY_BASE=$(mix phx.gen.secret) \
-  -v ./data:/data \
-  pgpeek
+export DATABASE_URL=postgres://readonly_user:pass@localhost:5432/mydb
+export ADMIN_PASSWORD=changeme
+mix setup
+mix phx.server
 ```
 
 ## Environment variables
