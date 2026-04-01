@@ -85,6 +85,14 @@ defmodule PgpeekWeb.SettingsLive do
     end
   end
 
+  def handle_event("llm_changed", %{"llm" => params}, socket) do
+    {:noreply,
+     socket
+     |> assign(:llm_model, params["model"] || "")
+     |> assign(:llm_api_key, params["api_key"] || "")
+     |> assign(:llm_test_result, nil)}
+  end
+
   def handle_event("test_llm", _params, socket) do
     model = socket.assigns.llm_model
     api_key = socket.assigns.llm_api_key
@@ -173,7 +181,13 @@ defmodule PgpeekWeb.SettingsLive do
               Connect an LLM to get plain English explanations and optimization suggestions for your queries.
               Supports OpenAI, Anthropic, Google, Groq, Ollama, and more via <span class="text-slate-300">req_llm</span>.
             </p>
-            <.form for={%{}} phx-submit="save_llm" id="llm-form" class="max-w-lg space-y-4">
+            <.form
+              for={%{}}
+              phx-submit="save_llm"
+              phx-change="llm_changed"
+              id="llm-form"
+              class="max-w-lg space-y-4"
+            >
               <div>
                 <label for="llm-model" class="block text-sm font-medium text-slate-400 mb-1.5">
                   Model
