@@ -134,6 +134,10 @@ defmodule PgpeekWeb.DiagnoseLive do
       |> assign(:loading, false)
       |> assign(:error, nil)
       |> assign(:configured, ProbeRepo.configured?())
+      |> assign(:ai_advice, nil)
+      |> assign(:ai_loading, false)
+      |> assign(:ai_error, nil)
+      |> assign(:llm_configured, Pgpeek.QueryExplainer.configured?())
 
     {:ok, socket}
   end
@@ -149,13 +153,39 @@ defmodule PgpeekWeb.DiagnoseLive do
         |> assign(:loading, true)
         |> assign(:results, nil)
         |> assign(:error, nil)
+        |> assign(:ai_advice, nil)
+        |> assign(:ai_error, nil)
 
       send(self(), {:run_check, check})
       {:noreply, socket}
     end
   end
 
+  def handle_event("ai_advise", _params, socket) do
+    socket = assign(socket, :ai_loading, true)
+    send(self(), :run_ai_advise)
+    {:noreply, socket}
+  end
+
   @impl true
+  def handle_info(:run_ai_advise, socket) do
+    check = get_check(socket.assigns.active_check)
+
+    {advice, error} =
+      case Pgpeek.QueryExplainer.advise_diagnostic(check.label, check.desc, socket.assigns.results || []) do
+        {:ok, text} -> {text, nil}
+        {:error, msg} -> {nil, to_string(msg)}
+      end
+
+    socket =
+      socket
+      |> assign(:ai_advice, advice)
+      |> assign(:ai_error, error)
+      |> assign(:ai_loading, false)
+
+    {:noreply, socket}
+  end
+
   def handle_info({:run_check, check}, socket) do
     {results, error} = run_diagnostic(check)
 
@@ -286,7 +316,30 @@ defmodule PgpeekWeb.DiagnoseLive do
                     <div class="px-6 py-4 border-b border-white/5">
                       <div class="flex items-center justify-between">
                         <h2 class="text-base font-semibold text-white">{check.label}</h2>
-                        <span class="text-xs text-slate-500"><%= length(@results) %> results</span>
+                        <div class="flex items-center gap-3">
+                          <%= if @llm_configured and @results != [] do %>
+                            <button
+                              phx-click="ai_advise"
+                              disabled={@ai_loading}
+                              class={[
+                                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
+                                if(@ai_loading,
+                                  do: "bg-white/5 text-slate-500 cursor-wait",
+                                  else: "bg-violet-500/10 text-violet-400 hover:bg-violet-500/20 cursor-pointer"
+                                )
+                              ]}
+                            >
+                              <%= if @ai_loading do %>
+                                <.icon name="hero-arrow-path" class="size-3.5 animate-spin" />
+                                Thinking...
+                              <% else %>
+                                <.icon name="hero-sparkles" class="size-3.5" />
+                                What should I do?
+                              <% end %>
+                            </button>
+                          <% end %>
+                          <span class="text-xs text-slate-500"><%= length(@results) %> results</span>
+                        </div>
                       </div>
                       <p class="mt-1 text-sm text-slate-500">{check.desc}</p>
                     </div>
@@ -303,6 +356,33 @@ defmodule PgpeekWeb.DiagnoseLive do
                       </div>
                     <% end %>
                   </div>
+
+                  <%!-- AI Advice --%>
+                  <%= if @ai_advice || @ai_error do %>
+                    <div class="glass-card overflow-hidden mt-4">
+                      <div class="flex items-center gap-2 px-6 py-3 border-b border-white/5">
+                        <.icon name="hero-sparkles" class="size-4 text-violet-400" />
+                        <h2 class="text-xs font-medium uppercase tracking-wider text-slate-500">AI Advice</h2>
+                      </div>
+                      <%= if @ai_error do %>
+                        <div class="p-6">
+                          <div class="flex items-start gap-3">
+                            <.icon name="hero-x-circle" class="size-5 text-red-400 shrink-0 mt-0.5" />
+                            <p class="text-sm text-red-400"><%= @ai_error %></p>
+                          </div>
+                        </div>
+                      <% else %>
+                        <div class="p-6 prose prose-invert prose-sm max-w-none
+                                    prose-headings:text-slate-200 prose-headings:text-sm prose-headings:font-semibold prose-headings:mt-4 prose-headings:mb-2
+                                    prose-p:text-slate-300 prose-p:leading-relaxed
+                                    prose-li:text-slate-300
+                                    prose-code:text-blue-300 prose-code:bg-white/5 prose-code:px-1 prose-code:rounded
+                                    prose-strong:text-slate-200">
+                          <%= raw(render_markdown(@ai_advice)) %>
+                        </div>
+                      <% end %>
+                    </div>
+                  <% end %>
 
                 <% true -> %>
                   <div class="glass-card p-16 text-center">
@@ -377,4 +457,20 @@ defmodule PgpeekWeb.DiagnoseLive do
   end
 
   defp format_cell(val), do: to_string(val)
+
+  defp render_markdown(text) when is_binary(text) do
+    text
+    |> Phoenix.HTML.html_escape()
+    |> Phoenix.HTML.safe_to_string()
+    |> String.replace(~r/\*\*(.+?)\*\*/, "<strong>\\1</strong>")
+    |> String.replace(~r/`([^`]+)`/, "<code>\\1</code>")
+    |> String.replace(~r/^### (.+)$/m, "<h3>\\1</h3>")
+    |> String.replace(~r/^## (.+)$/m, "<h2>\\1</h2>")
+    |> String.replace(~r/^- (.+)$/m, "<li>\\1</li>")
+    |> String.replace(~r/(<li>.*<\/li>\n?)+/s, fn match -> "<ul>#{match}</ul>" end)
+    |> String.replace("\n\n", "</p><p>")
+    |> then(&"<p>#{&1}</p>")
+  end
+
+  defp render_markdown(_), do: ""
 end

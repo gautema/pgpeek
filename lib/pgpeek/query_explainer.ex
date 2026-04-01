@@ -46,6 +46,22 @@ defmodule Pgpeek.QueryExplainer do
 
   def explain(nil), do: {:error, "No query text available"}
 
+  @doc """
+  Get AI advice on diagnostic results.
+  Takes the check name, description, and result rows, and asks
+  the LLM for actionable recommendations.
+  """
+  def advise_diagnostic(check_label, check_desc, results) when is_list(results) do
+    case config() do
+      {:ok, model, api_key} ->
+        if api_key, do: set_api_key(model, api_key)
+        do_advise(model, check_label, check_desc, results)
+
+      :not_configured ->
+        {:error, :not_configured}
+    end
+  end
+
   @doc "Check if an LLM is configured."
   def configured? do
     config() != :not_configured
@@ -98,6 +114,55 @@ defmodule Pgpeek.QueryExplainer do
       end
 
     if key_name, do: ReqLLM.put_key(key_name, api_key)
+  end
+
+  defp do_advise(model, check_label, check_desc, results) do
+    # Summarize results — send at most 20 rows to avoid blowing token limits
+    summary =
+      results
+      |> Enum.take(20)
+      |> Enum.map(fn row ->
+        row
+        |> Enum.map(fn {k, v} -> "#{k}: #{inspect(v)}" end)
+        |> Enum.join(", ")
+      end)
+      |> Enum.join("\n")
+
+    total = length(results)
+    truncated = if total > 20, do: " (showing 20 of #{total})", else: ""
+
+    context =
+      ReqLLM.Context.new([
+        ReqLLM.Context.system("""
+        You are a PostgreSQL DBA expert. You will be shown the results of a diagnostic check
+        run against a production PostgreSQL database.
+
+        Give clear, actionable advice:
+        - What do these results mean?
+        - What should the user do about it? Be specific — include SQL commands where relevant.
+        - Which items are most urgent?
+        - Which are safe to ignore?
+
+        Be concise. Use markdown. Keep it under 400 words.
+        """),
+        ReqLLM.Context.user("""
+        Diagnostic: **#{check_label}**
+        Description: #{check_desc}
+
+        Results#{truncated}:
+        ```
+        #{summary}
+        ```
+        """)
+      ])
+
+    case ReqLLM.generate_text(model, context, max_tokens: 1500, temperature: 0.3) do
+      {:ok, response} ->
+        {:ok, extract_content(response)}
+
+      {:error, reason} ->
+        {:error, format_error(reason)}
+    end
   end
 
   defp do_explain(model, query_text) do
