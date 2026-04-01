@@ -22,6 +22,13 @@ if interval = System.get_env("SNAPSHOT_INTERVAL") do
   config :pgpeek, :snapshot_interval, String.to_integer(interval) * 1_000
 end
 
+# LLM for query explanations (optional, format: "provider:model")
+# Examples: "anthropic:claude-haiku-4-5", "openai:gpt-4o-mini", "ollama:llama3"
+# Requires corresponding API key env var (ANTHROPIC_API_KEY, OPENAI_API_KEY, etc)
+if llm_model = System.get_env("LLM_MODEL") do
+  config :pgpeek, :llm_model, llm_model
+end
+
 # Retention period in days (default: 7)
 if retention = System.get_env("RETENTION_DAYS") do
   config :pgpeek, :retention_days, String.to_integer(retention)

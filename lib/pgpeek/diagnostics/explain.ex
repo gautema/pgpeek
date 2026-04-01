@@ -80,16 +80,13 @@ defmodule Pgpeek.Diagnostics.Explain do
           {:error, error}
       end
     end) do
-      {:ok, {:ok, %Postgrex.Result{rows: rows}}} ->
+      {:ok, %Postgrex.Result{rows: rows}} ->
         plan =
           rows
           |> Enum.map(fn [line] -> line end)
           |> Enum.join("\n")
 
         {:ok, plan}
-
-      {:ok, {:error, error}} ->
-        {:error, format_error(error)}
 
       {:error, error} ->
         {:error, format_error(error)}

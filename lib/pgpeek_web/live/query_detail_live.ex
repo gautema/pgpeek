@@ -17,6 +17,10 @@ defmodule PgpeekWeb.QueryDetailLive do
       |> assign(:explain_plan, nil)
       |> assign(:explain_loading, false)
       |> assign(:explain_error, nil)
+      |> assign(:ai_explanation, nil)
+      |> assign(:ai_loading, false)
+      |> assign(:ai_error, nil)
+      |> assign(:llm_configured, Pgpeek.QueryExplainer.configured?())
       |> load_query_data()
 
     {:ok, socket}
@@ -29,9 +33,31 @@ defmodule PgpeekWeb.QueryDetailLive do
     {:noreply, socket}
   end
 
+  def handle_event("ai_explain", _params, socket) do
+    socket = assign(socket, :ai_loading, true)
+    send(self(), :run_ai_explain)
+    {:noreply, socket}
+  end
+
   @impl true
   def handle_info({:new_snapshot, _id}, socket) do
     {:noreply, load_query_data(socket)}
+  end
+
+  def handle_info(:run_ai_explain, socket) do
+    {explanation, error} =
+      case Pgpeek.QueryExplainer.explain(socket.assigns.query_text) do
+        {:ok, text} -> {text, nil}
+        {:error, msg} -> {nil, to_string(msg)}
+      end
+
+    socket =
+      socket
+      |> assign(:ai_explanation, explanation)
+      |> assign(:ai_error, error)
+      |> assign(:ai_loading, false)
+
+    {:noreply, socket}
   end
 
   def handle_info(:run_explain, socket) do
@@ -97,25 +123,48 @@ defmodule PgpeekWeb.QueryDetailLive do
               <h2 class="text-xs font-medium uppercase tracking-wider text-slate-500">Query Text</h2>
             </div>
             <%= if @query_text do %>
-              <button
-                phx-click="explain"
-                disabled={@explain_loading}
-                class={[
-                  "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
-                  if(@explain_loading,
-                    do: "bg-white/5 text-slate-500 cursor-wait",
-                    else: "bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 cursor-pointer"
-                  )
-                ]}
-              >
-                <%= if @explain_loading do %>
-                  <.icon name="hero-arrow-path" class="size-3.5 animate-spin" />
-                  Running...
-                <% else %>
-                  <.icon name="hero-play" class="size-3.5" />
-                  Explain Plan
+              <div class="flex items-center gap-2">
+                <button
+                  phx-click="explain"
+                  disabled={@explain_loading}
+                  class={[
+                    "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
+                    if(@explain_loading,
+                      do: "bg-white/5 text-slate-500 cursor-wait",
+                      else: "bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 cursor-pointer"
+                    )
+                  ]}
+                >
+                  <%= if @explain_loading do %>
+                    <.icon name="hero-arrow-path" class="size-3.5 animate-spin" />
+                    Running...
+                  <% else %>
+                    <.icon name="hero-play" class="size-3.5" />
+                    Explain Plan
+                  <% end %>
+                </button>
+                <%= if @llm_configured do %>
+                  <button
+                    phx-click="ai_explain"
+                    disabled={@ai_loading}
+                    class={[
+                      "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
+                      if(@ai_loading,
+                        do: "bg-white/5 text-slate-500 cursor-wait",
+                        else: "bg-violet-500/10 text-violet-400 hover:bg-violet-500/20 cursor-pointer"
+                      )
+                    ]}
+                  >
+                    <%= if @ai_loading do %>
+                      <.icon name="hero-arrow-path" class="size-3.5 animate-spin" />
+                      Thinking...
+                    <% else %>
+                      <.icon name="hero-sparkles" class="size-3.5" />
+                      AI Explain
+                    <% end %>
+                  </button>
                 <% end %>
-              </button>
+              </div>
             <% end %>
           </div>
           <div class="p-6">
@@ -147,6 +196,33 @@ defmodule PgpeekWeb.QueryDetailLive do
             <% else %>
               <div class="p-6">
                 <pre class="overflow-x-auto text-sm font-mono text-slate-300 leading-relaxed whitespace-pre-wrap"><%= @explain_plan %></pre>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+
+        <%!-- AI Explanation --%>
+        <%= if @ai_explanation || @ai_error do %>
+          <div class="glass-card overflow-hidden">
+            <div class="flex items-center gap-2 px-6 py-3 border-b border-white/5">
+              <.icon name="hero-sparkles" class="size-4 text-violet-400" />
+              <h2 class="text-xs font-medium uppercase tracking-wider text-slate-500">AI Explanation</h2>
+            </div>
+            <%= if @ai_error do %>
+              <div class="p-6">
+                <div class="flex items-start gap-3">
+                  <.icon name="hero-x-circle" class="size-5 text-red-400 shrink-0 mt-0.5" />
+                  <p class="text-sm text-red-400"><%= @ai_error %></p>
+                </div>
+              </div>
+            <% else %>
+              <div class="p-6 prose prose-invert prose-sm max-w-none
+                          prose-headings:text-slate-200 prose-headings:text-sm prose-headings:font-semibold prose-headings:mt-4 prose-headings:mb-2
+                          prose-p:text-slate-300 prose-p:leading-relaxed
+                          prose-li:text-slate-300
+                          prose-code:text-blue-300 prose-code:bg-white/5 prose-code:px-1 prose-code:rounded
+                          prose-strong:text-slate-200">
+                <%= raw(render_markdown(@ai_explanation)) %>
               </div>
             <% end %>
           </div>
@@ -260,4 +336,20 @@ defmodule PgpeekWeb.QueryDetailLive do
   defp format_number(n) when is_integer(n) and n >= 1_000_000, do: "#{Float.round(n / 1_000_000, 1)}M"
   defp format_number(n) when is_integer(n) and n >= 1_000, do: "#{Float.round(n / 1_000, 1)}K"
   defp format_number(n), do: to_string(n)
+
+  defp render_markdown(text) when is_binary(text) do
+    text
+    |> Phoenix.HTML.html_escape()
+    |> Phoenix.HTML.safe_to_string()
+    |> String.replace(~r/\*\*(.+?)\*\*/, "<strong>\\1</strong>")
+    |> String.replace(~r/`([^`]+)`/, "<code>\\1</code>")
+    |> String.replace(~r/^### (.+)$/m, "<h3>\\1</h3>")
+    |> String.replace(~r/^## (.+)$/m, "<h2>\\1</h2>")
+    |> String.replace(~r/^- (.+)$/m, "<li>\\1</li>")
+    |> String.replace(~r/(<li>.*<\/li>\n?)+/s, fn match -> "<ul>#{match}</ul>" end)
+    |> String.replace("\n\n", "</p><p>")
+    |> then(&"<p>#{&1}</p>")
+  end
+
+  defp render_markdown(_), do: ""
 end

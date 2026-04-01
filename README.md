@@ -58,6 +58,9 @@ docker run -p 4444:4444 \
 | `SNAPSHOT_INTERVAL` | `300` | Seconds between snapshots (default: 5 minutes) |
 | `RETENTION_DAYS` | `7` | Days to keep snapshot history before auto-cleanup |
 | `DATA_DIR` | `./data` | SQLite database directory (mount as Docker volume) |
+| `LLM_MODEL` | _(optional)_ | LLM for AI query explanations, e.g. `anthropic:claude-haiku-4-5`, `openai:gpt-4o-mini`, `ollama:llama3` |
+| `ANTHROPIC_API_KEY` | _(optional)_ | API key for Anthropic (if using `anthropic:` models) |
+| `OPENAI_API_KEY` | _(optional)_ | API key for OpenAI (if using `openai:` models) |
 
 ## Storage considerations
 

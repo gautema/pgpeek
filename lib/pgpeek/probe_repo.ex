@@ -51,9 +51,13 @@ defmodule Pgpeek.ProbeRepo do
   Run multiple queries on the same connection.
   Useful for PREPARE/EXECUTE/DEALLOCATE sequences where statements
   are connection-local.
+
+  Uses DBConnection.run/3 instead of a transaction so that
+  `{:error, _}` return values from the callback are passed through
+  as-is rather than triggering a rollback.
   """
   def with_conn(fun) do
-    Postgrex.transaction(__MODULE__, fn conn ->
+    DBConnection.run(__MODULE__, fn conn ->
       fun.(conn)
     end)
   end
