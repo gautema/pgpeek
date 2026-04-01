@@ -63,9 +63,10 @@ defmodule PgpeekWeb.DashboardLiveTest do
   test "shows regression anomaly when query regresses", %{conn: conn} do
     # Create baseline snapshots over 7 days
     for i <- 1..7 do
-      s = Repo.insert!(%Snapshot{
-        captured_at: DateTime.add(DateTime.utc_now(), -i, :day) |> DateTime.truncate(:second)
-      })
+      s =
+        Repo.insert!(%Snapshot{
+          captured_at: DateTime.add(DateTime.utc_now(), -i, :day) |> DateTime.truncate(:second)
+        })
 
       Repo.insert!(%QueryStat{
         snapshot_id: s.id,
@@ -81,9 +82,10 @@ defmodule PgpeekWeb.DashboardLiveTest do
     end
 
     # Current snapshot with much higher mean (> 2x baseline)
-    current = Repo.insert!(%Snapshot{
-      captured_at: DateTime.utc_now() |> DateTime.truncate(:second)
-    })
+    current =
+      Repo.insert!(%Snapshot{
+        captured_at: DateTime.utc_now() |> DateTime.truncate(:second)
+      })
 
     Repo.insert!(%QueryStat{
       snapshot_id: current.id,
@@ -102,9 +104,10 @@ defmodule PgpeekWeb.DashboardLiveTest do
   end
 
   test "shows N+1 anomaly for high-frequency low-latency queries", %{conn: conn} do
-    prev = Repo.insert!(%Snapshot{
-      captured_at: DateTime.add(DateTime.utc_now(), -5, :minute) |> DateTime.truncate(:second)
-    })
+    prev =
+      Repo.insert!(%Snapshot{
+        captured_at: DateTime.add(DateTime.utc_now(), -5, :minute) |> DateTime.truncate(:second)
+      })
 
     Repo.insert!(%QueryStat{
       snapshot_id: prev.id,
@@ -118,9 +121,10 @@ defmodule PgpeekWeb.DashboardLiveTest do
       shared_blks_read: 0
     })
 
-    current = Repo.insert!(%Snapshot{
-      captured_at: DateTime.utc_now() |> DateTime.truncate(:second)
-    })
+    current =
+      Repo.insert!(%Snapshot{
+        captured_at: DateTime.utc_now() |> DateTime.truncate(:second)
+      })
 
     Repo.insert!(%QueryStat{
       snapshot_id: current.id,

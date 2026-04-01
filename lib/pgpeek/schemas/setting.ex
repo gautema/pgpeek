@@ -3,8 +3,8 @@ defmodule Pgpeek.Schemas.Setting do
   import Ecto.Changeset
 
   schema "settings" do
-    field :key, :string
-    field :value, :string
+    field(:key, :string)
+    field(:value, :string)
 
     timestamps(type: :utc_datetime)
   end

@@ -82,8 +82,9 @@ defmodule PgpeekWeb.QueriesLive do
             <h1 class="text-2xl font-bold text-white">All Queries</h1>
             <p class="mt-1 text-sm text-slate-400">
               <%= if @snapshot do %>
-                Snapshot from <%= Calendar.strftime(@snapshot.captured_at, "%Y-%m-%d %H:%M:%S UTC") %>
-                &middot; <%= length(@queries) %> queries
+                Snapshot from {Calendar.strftime(@snapshot.captured_at, "%Y-%m-%d %H:%M:%S UTC")} &middot; {length(
+                  @queries
+                )} queries
               <% else %>
                 Waiting for first snapshot...
               <% end %>
@@ -99,8 +100,18 @@ defmodule PgpeekWeb.QueriesLive do
                   <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">
                     Query
                   </th>
-                  <.sort_header field="total_exec_time" label="Total Time" current={@sort_by} dir={@sort_dir} />
-                  <.sort_header field="mean_exec_time" label="Mean Time" current={@sort_by} dir={@sort_dir} />
+                  <.sort_header
+                    field="total_exec_time"
+                    label="Total Time"
+                    current={@sort_by}
+                    dir={@sort_dir}
+                  />
+                  <.sort_header
+                    field="mean_exec_time"
+                    label="Mean Time"
+                    current={@sort_by}
+                    dir={@sort_dir}
+                  />
                   <.sort_header field="calls" label="Calls" current={@sort_by} dir={@sort_dir} />
                   <.sort_header field="rows" label="Rows" current={@sort_by} dir={@sort_dir} />
                   <th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-500 hidden lg:table-cell">
@@ -112,21 +123,24 @@ defmodule PgpeekWeb.QueriesLive do
                 <%= for query <- @queries do %>
                   <tr class="group hover:bg-white/[0.02] transition-colors">
                     <td class="max-w-lg truncate px-6 py-3 text-sm font-mono text-slate-300">
-                      <.link navigate={~p"/queries/#{query.query_id}"} class="hover:text-blue-400 transition-colors">
-                        <%= truncate_query(query.query_text) %>
+                      <.link
+                        navigate={~p"/queries/#{query.query_id}"}
+                        class="hover:text-blue-400 transition-colors"
+                      >
+                        {truncate_query(query.query_text)}
                       </.link>
                     </td>
                     <td class="whitespace-nowrap px-4 py-3 text-right text-sm tabular-nums text-slate-300">
-                      <%= format_time(query.total_exec_time) %>
+                      {format_time(query.total_exec_time)}
                     </td>
                     <td class="whitespace-nowrap px-4 py-3 text-right text-sm tabular-nums text-slate-400">
-                      <%= format_time(query.mean_exec_time) %>
+                      {format_time(query.mean_exec_time)}
                     </td>
                     <td class="whitespace-nowrap px-4 py-3 text-right text-sm tabular-nums text-slate-400">
-                      <%= format_number(query.calls) %>
+                      {format_number(query.calls)}
                     </td>
                     <td class="whitespace-nowrap px-4 py-3 text-right text-sm tabular-nums text-slate-400">
-                      <%= format_number(query.rows) %>
+                      {format_number(query.rows)}
                     </td>
                     <td class="whitespace-nowrap px-4 py-3 text-right text-sm tabular-nums hidden lg:table-cell">
                       <.cache_badge ratio={cache_hit_ratio(query)} />
@@ -190,7 +204,7 @@ defmodule PgpeekWeb.QueriesLive do
     assigns = assign(assigns, :color, color)
 
     ~H"""
-    <span class={@color}><%= @ratio %>%</span>
+    <span class={@color}>{@ratio}%</span>
     """
   end
 
@@ -203,7 +217,10 @@ defmodule PgpeekWeb.QueriesLive do
   defp format_time(ms), do: "#{Float.round(ms * 1.0, 2)}ms"
 
   defp format_number(nil), do: "-"
-  defp format_number(n) when is_integer(n) and n >= 1_000_000, do: "#{Float.round(n / 1_000_000, 1)}M"
+
+  defp format_number(n) when is_integer(n) and n >= 1_000_000,
+    do: "#{Float.round(n / 1_000_000, 1)}M"
+
   defp format_number(n) when is_integer(n) and n >= 1_000, do: "#{Float.round(n / 1_000, 1)}K"
   defp format_number(n), do: to_string(n)
 

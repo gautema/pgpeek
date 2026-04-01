@@ -6,9 +6,13 @@ defmodule Pgpeek.QueryExplainerTest do
   setup do
     original = Application.get_env(:pgpeek, :llm_model)
     Application.delete_env(:pgpeek, :llm_model)
+
     on_exit(fn ->
-      if original, do: Application.put_env(:pgpeek, :llm_model, original), else: Application.delete_env(:pgpeek, :llm_model)
+      if original,
+        do: Application.put_env(:pgpeek, :llm_model, original),
+        else: Application.delete_env(:pgpeek, :llm_model)
     end)
+
     :ok
   end
 

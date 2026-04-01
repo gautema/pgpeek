@@ -3,8 +3,8 @@ defmodule Pgpeek.Schemas.Deploy do
   import Ecto.Changeset
 
   schema "deploys" do
-    field :description, :string
-    field :deployed_at, :utc_datetime
+    field(:description, :string)
+    field(:deployed_at, :utc_datetime)
   end
 
   def changeset(deploy, attrs) do

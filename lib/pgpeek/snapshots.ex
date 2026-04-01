@@ -100,7 +100,9 @@ defmodule Pgpeek.Snapshots do
   @doc "Get query text from the deduplicated query_texts table, falling back to query_stats."
   def get_query_text(query_id) do
     case Repo.get_by(QueryText, query_id: query_id) do
-      %QueryText{query_text: text} when not is_nil(text) -> text
+      %QueryText{query_text: text} when not is_nil(text) ->
+        text
+
       _ ->
         # Fallback: check query_stats for older data that still has query_text
         QueryStat
@@ -173,7 +175,13 @@ defmodule Pgpeek.Snapshots do
       case Map.get(prev_map, stat.query_id) do
         nil ->
           # New query, no delta
-          %{stat: stat, delta_calls: stat.calls, delta_total_time: stat.total_exec_time, delta_mean_time: stat.mean_exec_time, new: true}
+          %{
+            stat: stat,
+            delta_calls: stat.calls,
+            delta_total_time: stat.total_exec_time,
+            delta_mean_time: stat.mean_exec_time,
+            new: true
+          }
 
         prev ->
           delta_calls = (stat.calls || 0) - (prev.calls || 0)
@@ -186,7 +194,13 @@ defmodule Pgpeek.Snapshots do
             # Stats were reset — skip
             %{stat: stat, delta_calls: 0, delta_total_time: 0, delta_mean_time: 0, reset: true}
           else
-            %{stat: stat, delta_calls: delta_calls, delta_total_time: delta_total_time, delta_mean_time: delta_mean_time, new: false}
+            %{
+              stat: stat,
+              delta_calls: delta_calls,
+              delta_total_time: delta_total_time,
+              delta_mean_time: delta_mean_time,
+              new: false
+            }
           end
       end
     end)
@@ -230,8 +244,10 @@ defmodule Pgpeek.Snapshots do
   defp utility_query?(stat) do
     query = String.upcase(String.trim(stat.query_text || ""))
 
-    Enum.any?(["BEGIN", "COMMIT", "ROLLBACK", "SET ", "RESET ", "DEALLOCATE", "DISCARD"],
-      &String.starts_with?(query, &1))
+    Enum.any?(
+      ["BEGIN", "COMMIT", "ROLLBACK", "SET ", "RESET ", "DEALLOCATE", "DISCARD"],
+      &String.starts_with?(query, &1)
+    )
   end
 
   defp get_baseline_mean(query_id, since) do

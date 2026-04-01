@@ -4,7 +4,6 @@ defmodule PgpeekWeb.SettingsLive do
   alias Pgpeek.Auth
   alias Pgpeek.Settings
 
-
   @impl true
   def mount(_params, _session, socket) do
     users = Auth.list_users()
@@ -15,7 +14,10 @@ defmodule PgpeekWeb.SettingsLive do
       socket
       |> assign(:page_title, "Settings")
       |> assign(:users, users)
-      |> assign(:password_form, to_form(%{"password" => "", "password_confirmation" => ""}, as: :password))
+      |> assign(
+        :password_form,
+        to_form(%{"password" => "", "password_confirmation" => ""}, as: :password)
+      )
       |> assign(:password_saved, false)
       |> assign(:new_user_form, to_form(%{"email" => "", "password" => ""}, as: :user))
       |> assign(:new_user_error, nil)
@@ -44,7 +46,10 @@ defmodule PgpeekWeb.SettingsLive do
           {:ok, _user} ->
             {:noreply,
              socket
-             |> assign(:password_form, to_form(%{"password" => "", "password_confirmation" => ""}, as: :password))
+             |> assign(
+               :password_form,
+               to_form(%{"password" => "", "password_confirmation" => ""}, as: :password)
+             )
              |> put_flash(:info, "Password updated successfully")}
 
           {:error, _changeset} ->
@@ -166,12 +171,13 @@ defmodule PgpeekWeb.SettingsLive do
           <div class="p-6">
             <p class="text-sm text-slate-400 mb-4">
               Connect an LLM to get plain English explanations and optimization suggestions for your queries.
-              Supports OpenAI, Anthropic, Google, Groq, Ollama, and more via
-              <span class="text-slate-300">req_llm</span>.
+              Supports OpenAI, Anthropic, Google, Groq, Ollama, and more via <span class="text-slate-300">req_llm</span>.
             </p>
             <.form for={%{}} phx-submit="save_llm" id="llm-form" class="max-w-lg space-y-4">
               <div>
-                <label for="llm-model" class="block text-sm font-medium text-slate-400 mb-1.5">Model</label>
+                <label for="llm-model" class="block text-sm font-medium text-slate-400 mb-1.5">
+                  Model
+                </label>
                 <input
                   type="text"
                   name="llm[model]"
@@ -186,16 +192,38 @@ defmodule PgpeekWeb.SettingsLive do
                   </p>
                   <p>Find model IDs from your provider:</p>
                   <ul class="list-disc list-inside ml-1 space-y-0.5 text-slate-500">
-                    <li><span class="text-slate-400">Anthropic:</span> <code class="text-slate-400">anthropic:</code> + ID from docs.anthropic.com/en/docs/about-claude/models</li>
-                    <li><span class="text-slate-400">OpenAI:</span> <code class="text-slate-400">openai:</code> + ID from platform.openai.com/docs/models</li>
-                    <li><span class="text-slate-400">Google:</span> <code class="text-slate-400">google:</code> + ID from ai.google.dev/gemini-api/docs/models</li>
-                    <li><span class="text-slate-400">Groq:</span> <code class="text-slate-400">groq:</code> + ID from console.groq.com/docs/models</li>
-                    <li><span class="text-slate-400">Ollama:</span> <code class="text-slate-400">ollama:</code> + name from <code class="text-slate-400">ollama list</code> (no API key needed)</li>
+                    <li>
+                      <span class="text-slate-400">Anthropic:</span>
+                      <code class="text-slate-400">anthropic:</code>
+                      + ID from docs.anthropic.com/en/docs/about-claude/models
+                    </li>
+                    <li>
+                      <span class="text-slate-400">OpenAI:</span>
+                      <code class="text-slate-400">openai:</code>
+                      + ID from platform.openai.com/docs/models
+                    </li>
+                    <li>
+                      <span class="text-slate-400">Google:</span>
+                      <code class="text-slate-400">google:</code>
+                      + ID from ai.google.dev/gemini-api/docs/models
+                    </li>
+                    <li>
+                      <span class="text-slate-400">Groq:</span>
+                      <code class="text-slate-400">groq:</code> + ID from console.groq.com/docs/models
+                    </li>
+                    <li>
+                      <span class="text-slate-400">Ollama:</span>
+                      <code class="text-slate-400">ollama:</code>
+                      + name from <code class="text-slate-400">ollama list</code>
+                      (no API key needed)
+                    </li>
                   </ul>
                 </div>
               </div>
               <div>
-                <label for="llm-api-key" class="block text-sm font-medium text-slate-400 mb-1.5">API Key</label>
+                <label for="llm-api-key" class="block text-sm font-medium text-slate-400 mb-1.5">
+                  API Key
+                </label>
                 <input
                   type="password"
                   name="llm[api_key]"
@@ -230,8 +258,7 @@ defmodule PgpeekWeb.SettingsLive do
                 >
                   <%= if @llm_testing do %>
                     <span class="inline-flex items-center gap-1.5">
-                      <.icon name="hero-arrow-path" class="size-3.5 animate-spin" />
-                      Testing...
+                      <.icon name="hero-arrow-path" class="size-3.5 animate-spin" /> Testing...
                     </span>
                   <% else %>
                     Test Connection
@@ -240,8 +267,7 @@ defmodule PgpeekWeb.SettingsLive do
                 <%= case @llm_test_result do %>
                   <% :ok -> %>
                     <span class="inline-flex items-center gap-1 text-sm text-emerald-400">
-                      <.icon name="hero-check-circle" class="size-4" />
-                      Connected
+                      <.icon name="hero-check-circle" class="size-4" /> Connected
                     </span>
                   <% {:error, msg} -> %>
                     <span class="inline-flex items-center gap-1 text-sm text-red-400">
@@ -262,9 +288,16 @@ defmodule PgpeekWeb.SettingsLive do
             <h2 class="text-base font-semibold text-white">Change Password</h2>
           </div>
           <div class="p-6">
-            <.form for={@password_form} phx-submit="change_password" id="password-form" class="max-w-sm space-y-4">
+            <.form
+              for={@password_form}
+              phx-submit="change_password"
+              id="password-form"
+              class="max-w-sm space-y-4"
+            >
               <div>
-                <label for="password-field" class="block text-sm font-medium text-slate-400 mb-1.5">New Password</label>
+                <label for="password-field" class="block text-sm font-medium text-slate-400 mb-1.5">
+                  New Password
+                </label>
                 <input
                   type="password"
                   name="password[password]"
@@ -277,7 +310,9 @@ defmodule PgpeekWeb.SettingsLive do
                 />
               </div>
               <div>
-                <label for="password-confirm" class="block text-sm font-medium text-slate-400 mb-1.5">Confirm Password</label>
+                <label for="password-confirm" class="block text-sm font-medium text-slate-400 mb-1.5">
+                  Confirm Password
+                </label>
                 <input
                   type="password"
                   name="password[password_confirmation]"
@@ -308,10 +343,17 @@ defmodule PgpeekWeb.SettingsLive do
             <table class="w-full">
               <thead>
                 <tr class="border-b border-white/5">
-                  <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Email</th>
-                  <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Created</th>
-                  <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Last Login</th>
-                  <th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-500"></th>
+                  <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">
+                    Email
+                  </th>
+                  <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">
+                    Created
+                  </th>
+                  <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">
+                    Last Login
+                  </th>
+                  <th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-500">
+                  </th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-white/5">
@@ -320,14 +362,20 @@ defmodule PgpeekWeb.SettingsLive do
                     <td class="px-6 py-3 text-sm text-slate-300">
                       {user.email}
                       <%= if user.id == @current_user.id do %>
-                        <span class="ml-2 inline-flex items-center rounded-full bg-blue-500/10 px-2 py-0.5 text-xs font-medium text-blue-400">you</span>
+                        <span class="ml-2 inline-flex items-center rounded-full bg-blue-500/10 px-2 py-0.5 text-xs font-medium text-blue-400">
+                          you
+                        </span>
                       <% end %>
                     </td>
                     <td class="px-4 py-3 text-sm text-slate-500">
-                      <%= if user.inserted_at, do: Calendar.strftime(user.inserted_at, "%Y-%m-%d"), else: "-" %>
+                      {if user.inserted_at,
+                        do: Calendar.strftime(user.inserted_at, "%Y-%m-%d"),
+                        else: "-"}
                     </td>
                     <td class="px-4 py-3 text-sm text-slate-500">
-                      <%= if user.last_login_at, do: Calendar.strftime(user.last_login_at, "%Y-%m-%d %H:%M"), else: "Never" %>
+                      {if user.last_login_at,
+                        do: Calendar.strftime(user.last_login_at, "%Y-%m-%d %H:%M"),
+                        else: "Never"}
                     </td>
                     <td class="px-4 py-3 text-right">
                       <%= if user.id != @current_user.id do %>
@@ -355,9 +403,16 @@ defmodule PgpeekWeb.SettingsLive do
                 <p class="text-xs text-red-400">{@new_user_error}</p>
               </div>
             <% end %>
-            <.form for={@new_user_form} phx-submit="create_user" id="new-user-form" class="flex items-end gap-3">
+            <.form
+              for={@new_user_form}
+              phx-submit="create_user"
+              id="new-user-form"
+              class="flex items-end gap-3"
+            >
               <div class="flex-1">
-                <label for="new-email" class="block text-xs font-medium text-slate-500 mb-1">Email</label>
+                <label for="new-email" class="block text-xs font-medium text-slate-500 mb-1">
+                  Email
+                </label>
                 <input
                   type="email"
                   name="user[email]"
@@ -368,7 +423,9 @@ defmodule PgpeekWeb.SettingsLive do
                 />
               </div>
               <div class="flex-1">
-                <label for="new-password" class="block text-xs font-medium text-slate-500 mb-1">Password</label>
+                <label for="new-password" class="block text-xs font-medium text-slate-500 mb-1">
+                  Password
+                </label>
                 <input
                   type="password"
                   name="user[password]"

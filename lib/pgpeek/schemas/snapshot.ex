@@ -3,10 +3,10 @@ defmodule Pgpeek.Schemas.Snapshot do
   import Ecto.Changeset
 
   schema "snapshots" do
-    field :captured_at, :utc_datetime
-    field :stats_reset_at, :utc_datetime
+    field(:captured_at, :utc_datetime)
+    field(:stats_reset_at, :utc_datetime)
 
-    has_many :query_stats, Pgpeek.Schemas.QueryStat
+    has_many(:query_stats, Pgpeek.Schemas.QueryStat)
   end
 
   def changeset(snapshot, attrs) do

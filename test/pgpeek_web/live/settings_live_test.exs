@@ -34,7 +34,9 @@ defmodule PgpeekWeb.SettingsLiveTest do
     {:ok, view, _html} = live(conn, "/settings")
 
     view
-    |> form("#password-form", %{password: %{password: "newpassword123", password_confirmation: "newpassword123"}})
+    |> form("#password-form", %{
+      password: %{password: "newpassword123", password_confirmation: "newpassword123"}
+    })
     |> render_submit()
 
     assert has_element?(view, "div", "Password updated successfully")
@@ -44,7 +46,9 @@ defmodule PgpeekWeb.SettingsLiveTest do
     {:ok, view, _html} = live(conn, "/settings")
 
     view
-    |> form("#password-form", %{password: %{password: "newpassword123", password_confirmation: "different"}})
+    |> form("#password-form", %{
+      password: %{password: "newpassword123", password_confirmation: "different"}
+    })
     |> render_submit()
 
     assert has_element?(view, "div", "Passwords do not match")

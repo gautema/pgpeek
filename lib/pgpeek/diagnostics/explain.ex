@@ -61,7 +61,8 @@ defmodule Pgpeek.Diagnostics.Explain do
 
     cond do
       String.ends_with?(trimmed, "...") ->
-        {:error, "Query text is truncated by pg_stat_statements and cannot be explained. Increase track_activity_query_size in postgresql.conf."}
+        {:error,
+         "Query text is truncated by pg_stat_statements and cannot be explained. Increase track_activity_query_size in postgresql.conf."}
 
       true ->
         run_explain(query_text, format_opt)
@@ -98,9 +99,14 @@ defmodule Pgpeek.Diagnostics.Explain do
 
   defp format_error(%Postgrex.Error{postgres: %{message: message, code: code}}) do
     case code do
-      "25006" -> "Cannot explain write queries (INSERT/UPDATE/DELETE) on a read-only connection."
-      "42601" -> "Syntax error — this query may use internal syntax that cannot be explained: #{message}"
-      _ -> message
+      "25006" ->
+        "Cannot explain write queries (INSERT/UPDATE/DELETE) on a read-only connection."
+
+      "42601" ->
+        "Syntax error — this query may use internal syntax that cannot be explained: #{message}"
+
+      _ ->
+        message
     end
   end
 

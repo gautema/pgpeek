@@ -10,7 +10,7 @@
 
       <%= if @error do %>
         <div class="mb-6 rounded-lg bg-red-500/10 border border-red-500/20 px-4 py-3">
-          <p class="text-sm text-red-400"><%= @error %></p>
+          <p class="text-sm text-red-400">{@error}</p>
         </div>
       <% end %>
 
@@ -19,7 +19,9 @@
 
         <div class="space-y-4">
           <div>
-            <label for="email" class="block text-sm font-medium text-slate-400 mb-1.5">Email</label>
+            <label for="email" class="block text-sm font-medium text-slate-400 mb-1.5">
+              Email
+            </label>
             <input
               type="email"
               name="email"
@@ -33,7 +35,9 @@
           </div>
 
           <div>
-            <label for="password" class="block text-sm font-medium text-slate-400 mb-1.5">Password</label>
+            <label for="password" class="block text-sm font-medium text-slate-400 mb-1.5">
+              Password
+            </label>
             <input
               type="password"
               name="password"

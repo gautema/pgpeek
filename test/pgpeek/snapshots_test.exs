@@ -130,7 +130,7 @@ defmodule Pgpeek.SnapshotsTest do
 
       assert :ok = Snapshots.insert_query_stats(snapshot.id, rows)
 
-      stats = Repo.all(from qs in QueryStat, where: qs.snapshot_id == ^snapshot.id)
+      stats = Repo.all(from(qs in QueryStat, where: qs.snapshot_id == ^snapshot.id))
       assert length(stats) == 2
     end
 
@@ -144,28 +144,49 @@ defmodule Pgpeek.SnapshotsTest do
 
       rows = [
         %{
-          "queryid" => 123, "query" => "SELECT 1",
-          "calls" => 100, "mean_exec_time" => 1.0, "total_exec_time" => 100.0,
-          "min_exec_time" => 0.5, "max_exec_time" => 5.0, "stddev_exec_time" => 0.8,
-          "rows" => 100, "shared_blks_hit" => 50, "shared_blks_read" => 5
+          "queryid" => 123,
+          "query" => "SELECT 1",
+          "calls" => 100,
+          "mean_exec_time" => 1.0,
+          "total_exec_time" => 100.0,
+          "min_exec_time" => 0.5,
+          "max_exec_time" => 5.0,
+          "stddev_exec_time" => 0.8,
+          "rows" => 100,
+          "shared_blks_hit" => 50,
+          "shared_blks_read" => 5
         },
         %{
-          "queryid" => 123, "query" => "SELECT 1",
-          "calls" => 200, "mean_exec_time" => 2.0, "total_exec_time" => 400.0,
-          "min_exec_time" => 0.3, "max_exec_time" => 8.0, "stddev_exec_time" => 1.0,
-          "rows" => 200, "shared_blks_hit" => 80, "shared_blks_read" => 10
+          "queryid" => 123,
+          "query" => "SELECT 1",
+          "calls" => 200,
+          "mean_exec_time" => 2.0,
+          "total_exec_time" => 400.0,
+          "min_exec_time" => 0.3,
+          "max_exec_time" => 8.0,
+          "stddev_exec_time" => 1.0,
+          "rows" => 200,
+          "shared_blks_hit" => 80,
+          "shared_blks_read" => 10
         },
         %{
-          "queryid" => 123, "query" => "SELECT 1",
-          "calls" => 50, "mean_exec_time" => 0.5, "total_exec_time" => 25.0,
-          "min_exec_time" => 0.1, "max_exec_time" => 3.0, "stddev_exec_time" => 0.5,
-          "rows" => 50, "shared_blks_hit" => 20, "shared_blks_read" => 2
+          "queryid" => 123,
+          "query" => "SELECT 1",
+          "calls" => 50,
+          "mean_exec_time" => 0.5,
+          "total_exec_time" => 25.0,
+          "min_exec_time" => 0.1,
+          "max_exec_time" => 3.0,
+          "stddev_exec_time" => 0.5,
+          "rows" => 50,
+          "shared_blks_hit" => 20,
+          "shared_blks_read" => 2
         }
       ]
 
       assert :ok = Snapshots.insert_query_stats(snapshot.id, rows)
 
-      stats = Repo.all(from qs in QueryStat, where: qs.snapshot_id == ^snapshot.id)
+      stats = Repo.all(from(qs in QueryStat, where: qs.snapshot_id == ^snapshot.id))
       assert length(stats) == 1
 
       stat = hd(stats)
@@ -216,8 +237,13 @@ defmodule Pgpeek.SnapshotsTest do
       s1 = create_snapshot(%{captured_at: ~U[2024-01-01 10:00:00Z]})
       s2 = create_snapshot(%{captured_at: ~U[2024-01-01 11:00:00Z]})
 
-      insert_stats(s1.id, [%{query_id: "q1", calls: 10, mean_exec_time: 1.0, total_exec_time: 10.0, rows: 10}])
-      insert_stats(s2.id, [%{query_id: "q1", calls: 20, mean_exec_time: 1.5, total_exec_time: 30.0, rows: 20}])
+      insert_stats(s1.id, [
+        %{query_id: "q1", calls: 10, mean_exec_time: 1.0, total_exec_time: 10.0, rows: 10}
+      ])
+
+      insert_stats(s2.id, [
+        %{query_id: "q1", calls: 20, mean_exec_time: 1.5, total_exec_time: 30.0, rows: 20}
+      ])
 
       history = Snapshots.query_history("q1")
       assert length(history) == 2
@@ -310,13 +336,21 @@ defmodule Pgpeek.SnapshotsTest do
     test "flags high frequency, low latency queries with parameter pattern" do
       deltas = [
         %{
-          stat: %QueryStat{query_id: "1", mean_exec_time: 0.5, query_text: "SELECT * FROM users WHERE id = $1"},
+          stat: %QueryStat{
+            query_id: "1",
+            mean_exec_time: 0.5,
+            query_text: "SELECT * FROM users WHERE id = $1"
+          },
           delta_calls: 500,
           delta_total_time: 250.0,
           delta_mean_time: 0.5
         },
         %{
-          stat: %QueryStat{query_id: "2", mean_exec_time: 50.0, query_text: "SELECT * FROM reports"},
+          stat: %QueryStat{
+            query_id: "2",
+            mean_exec_time: 50.0,
+            query_text: "SELECT * FROM reports"
+          },
           delta_calls: 5,
           delta_total_time: 250.0,
           delta_mean_time: 50.0
@@ -331,7 +365,11 @@ defmodule Pgpeek.SnapshotsTest do
     test "does not flag queries with high mean time" do
       deltas = [
         %{
-          stat: %QueryStat{query_id: "1", mean_exec_time: 10.0, query_text: "SELECT * FROM users WHERE id = $1"},
+          stat: %QueryStat{
+            query_id: "1",
+            mean_exec_time: 10.0,
+            query_text: "SELECT * FROM users WHERE id = $1"
+          },
           delta_calls: 500,
           delta_total_time: 5000.0,
           delta_mean_time: 10.0
@@ -344,7 +382,11 @@ defmodule Pgpeek.SnapshotsTest do
     test "does not flag queries without parameter pattern" do
       deltas = [
         %{
-          stat: %QueryStat{query_id: "1", mean_exec_time: 0.5, query_text: "SELECT count(*) FROM users"},
+          stat: %QueryStat{
+            query_id: "1",
+            mean_exec_time: 0.5,
+            query_text: "SELECT count(*) FROM users"
+          },
           delta_calls: 500,
           delta_total_time: 250.0,
           delta_mean_time: 0.5
@@ -357,7 +399,11 @@ defmodule Pgpeek.SnapshotsTest do
     test "handles zero period minutes" do
       deltas = [
         %{
-          stat: %QueryStat{query_id: "1", mean_exec_time: 0.5, query_text: "SELECT * FROM users WHERE id = $1"},
+          stat: %QueryStat{
+            query_id: "1",
+            mean_exec_time: 0.5,
+            query_text: "SELECT * FROM users WHERE id = $1"
+          },
           delta_calls: 500,
           delta_total_time: 250.0,
           delta_mean_time: 0.5
@@ -372,7 +418,11 @@ defmodule Pgpeek.SnapshotsTest do
     test "flags queries exceeding 2x baseline mean with sufficient calls" do
       # Create historical baseline data
       for i <- 1..7 do
-        s = create_snapshot(%{captured_at: DateTime.add(DateTime.utc_now(), -i, :day) |> DateTime.truncate(:second)})
+        s =
+          create_snapshot(%{
+            captured_at: DateTime.add(DateTime.utc_now(), -i, :day) |> DateTime.truncate(:second)
+          })
+
         insert_stats(s.id, [%{query_id: "q1", mean_exec_time: 10.0, calls: 200}])
       end
 
@@ -387,7 +437,11 @@ defmodule Pgpeek.SnapshotsTest do
 
     test "does not flag queries with fewer than 100 calls" do
       for i <- 1..7 do
-        s = create_snapshot(%{captured_at: DateTime.add(DateTime.utc_now(), -i, :day) |> DateTime.truncate(:second)})
+        s =
+          create_snapshot(%{
+            captured_at: DateTime.add(DateTime.utc_now(), -i, :day) |> DateTime.truncate(:second)
+          })
+
         insert_stats(s.id, [%{query_id: "q1", mean_exec_time: 10.0, calls: 200}])
       end
 
@@ -400,7 +454,11 @@ defmodule Pgpeek.SnapshotsTest do
 
     test "does not flag queries within normal range" do
       for i <- 1..7 do
-        s = create_snapshot(%{captured_at: DateTime.add(DateTime.utc_now(), -i, :day) |> DateTime.truncate(:second)})
+        s =
+          create_snapshot(%{
+            captured_at: DateTime.add(DateTime.utc_now(), -i, :day) |> DateTime.truncate(:second)
+          })
+
         insert_stats(s.id, [%{query_id: "q1", mean_exec_time: 10.0, calls: 200}])
       end
 
@@ -414,7 +472,11 @@ defmodule Pgpeek.SnapshotsTest do
 
   describe "cleanup_old_snapshots/1" do
     test "deletes snapshots older than retention period" do
-      old = create_snapshot(%{captured_at: DateTime.add(DateTime.utc_now(), -10, :day) |> DateTime.truncate(:second)})
+      old =
+        create_snapshot(%{
+          captured_at: DateTime.add(DateTime.utc_now(), -10, :day) |> DateTime.truncate(:second)
+        })
+
       recent = create_snapshot(%{captured_at: DateTime.utc_now() |> DateTime.truncate(:second)})
 
       deleted = Snapshots.cleanup_old_snapshots(7)
@@ -459,10 +521,17 @@ defmodule Pgpeek.SnapshotsTest do
 
       rows = [
         %{
-          "queryid" => 999, "query" => "SELECT * FROM orders",
-          "calls" => 10, "mean_exec_time" => 1.0, "total_exec_time" => 10.0,
-          "min_exec_time" => 0.5, "max_exec_time" => 2.0, "stddev_exec_time" => 0.3,
-          "rows" => 10, "shared_blks_hit" => 5, "shared_blks_read" => 1
+          "queryid" => 999,
+          "query" => "SELECT * FROM orders",
+          "calls" => 10,
+          "mean_exec_time" => 1.0,
+          "total_exec_time" => 10.0,
+          "min_exec_time" => 0.5,
+          "max_exec_time" => 2.0,
+          "stddev_exec_time" => 0.3,
+          "rows" => 10,
+          "shared_blks_hit" => 5,
+          "shared_blks_read" => 1
         }
       ]
 

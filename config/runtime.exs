@@ -36,8 +36,7 @@ end
 
 # SQLite database path override (useful for Docker volumes)
 if data_dir = System.get_env("DATA_DIR") do
-  config :pgpeek, Pgpeek.Repo,
-    database: Path.join(data_dir, "pgpeek.db")
+  config :pgpeek, Pgpeek.Repo, database: Path.join(data_dir, "pgpeek.db")
 end
 
 if config_env() == :prod do

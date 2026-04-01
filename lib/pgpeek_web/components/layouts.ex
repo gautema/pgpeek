@@ -30,10 +30,17 @@ defmodule PgpeekWeb.Layouts do
           <.connection_indicator />
           <%= if @current_user do %>
             <div class="flex items-center gap-3">
-              <.link navigate="/settings" class="text-xs text-slate-500 hover:text-slate-300 transition-colors">
+              <.link
+                navigate="/settings"
+                class="text-xs text-slate-500 hover:text-slate-300 transition-colors"
+              >
                 <.icon name="hero-cog-6-tooth" class="size-4" />
               </.link>
-              <.link href="/logout" method="delete" class="text-xs text-slate-500 hover:text-slate-300 transition-colors">
+              <.link
+                href="/logout"
+                method="delete"
+                class="text-xs text-slate-500 hover:text-slate-300 transition-colors"
+              >
                 Sign out
               </.link>
             </div>
@@ -66,7 +73,8 @@ defmodule PgpeekWeb.Layouts do
     ~H"""
     <div class="flex items-center gap-1.5 text-xs text-slate-500">
       <span class="relative flex size-2">
-        <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+        <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75">
+        </span>
         <span class="relative inline-flex size-2 rounded-full bg-emerald-500"></span>
       </span>
       <span class="hidden sm:inline">Connected</span>

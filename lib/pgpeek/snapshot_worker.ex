@@ -8,7 +8,8 @@ defmodule Pgpeek.SnapshotWorker do
 
   require Logger
 
-  @default_interval 300_000  # 5 minutes
+  # 5 minutes
+  @default_interval 300_000
 
   def start_link(opts \\ []) do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)
@@ -68,7 +69,9 @@ defmodule Pgpeek.SnapshotWorker do
       reset_changed = state.last_stats_reset != nil and stats_reset_at != state.last_stats_reset
 
       if reset_changed do
-        Logger.warning("PgPeek: pg_stat_statements was reset — skipping delta calculation this cycle")
+        Logger.warning(
+          "PgPeek: pg_stat_statements was reset — skipping delta calculation this cycle"
+        )
       end
 
       captured_at = DateTime.utc_now() |> DateTime.truncate(:second)
@@ -94,7 +97,9 @@ defmodule Pgpeek.SnapshotWorker do
       deleted = Pgpeek.Snapshots.cleanup_old_snapshots(retention_days)
 
       if deleted > 0 do
-        Logger.info("PgPeek: Cleaned up #{deleted} old snapshots (retention: #{retention_days} days)")
+        Logger.info(
+          "PgPeek: Cleaned up #{deleted} old snapshots (retention: #{retention_days} days)"
+        )
       end
 
       %{state | last_stats_reset: stats_reset_at}

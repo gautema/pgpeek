@@ -3,10 +3,10 @@ defmodule Pgpeek.Schemas.Alert do
   import Ecto.Changeset
 
   schema "alerts" do
-    field :metric, :string
-    field :threshold, :float
-    field :channel, :string
-    field :destination, :string
+    field(:metric, :string)
+    field(:threshold, :float)
+    field(:channel, :string)
+    field(:destination, :string)
 
     timestamps(type: :utc_datetime, updated_at: false)
   end

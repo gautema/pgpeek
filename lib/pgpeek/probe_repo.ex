@@ -58,8 +58,8 @@ defmodule Pgpeek.ProbeRepo do
   """
   def with_conn(fun) do
     case Postgrex.transaction(__MODULE__, fn conn ->
-      {:wrapped, fun.(conn)}
-    end) do
+           {:wrapped, fun.(conn)}
+         end) do
       {:ok, {:wrapped, result}} -> result
       {:error, error} -> {:error, error}
     end

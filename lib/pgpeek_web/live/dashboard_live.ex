@@ -45,7 +45,13 @@ defmodule PgpeekWeb.DashboardLive do
           else
             top_deltas =
               Enum.map(stats, fn s ->
-                %{stat: s, delta_calls: s.calls || 0, delta_total_time: s.total_exec_time || 0, delta_mean_time: s.mean_exec_time || 0, new: true}
+                %{
+                  stat: s,
+                  delta_calls: s.calls || 0,
+                  delta_total_time: s.total_exec_time || 0,
+                  delta_mean_time: s.mean_exec_time || 0,
+                  new: true
+                }
               end)
 
             {top_deltas, top_deltas, 0}
@@ -75,7 +81,9 @@ defmodule PgpeekWeb.DashboardLive do
   defp load_pg_stats do
     if ProbeRepo.configured?() do
       db_stats =
-        case ProbeRepo.query("SELECT blks_hit, blks_read FROM pg_stat_database WHERE datname = current_database()") do
+        case ProbeRepo.query(
+               "SELECT blks_hit, blks_read FROM pg_stat_database WHERE datname = current_database()"
+             ) do
           {:ok, %{rows: [[hit, read]]}} ->
             total = (hit || 0) + (read || 0)
             ratio = if total > 0, do: Float.round(hit / total * 100, 2), else: 0.0
@@ -111,7 +119,9 @@ defmodule PgpeekWeb.DashboardLive do
           <%= if @snapshot do %>
             <div class="flex items-center gap-2 text-xs text-slate-500">
               <.icon name="hero-clock" class="size-3.5" />
-              <span>Last snapshot: <%= Calendar.strftime(@snapshot.captured_at, "%Y-%m-%d %H:%M:%S UTC") %></span>
+              <span>
+                Last snapshot: {Calendar.strftime(@snapshot.captured_at, "%Y-%m-%d %H:%M:%S UTC")}
+              </span>
             </div>
           <% end %>
         </div>
@@ -123,7 +133,10 @@ defmodule PgpeekWeb.DashboardLive do
             </div>
             <h2 class="text-lg font-semibold text-white">No database configured</h2>
             <p class="mt-2 text-sm text-slate-400 max-w-md mx-auto">
-              Set the <code class="px-1.5 py-0.5 rounded bg-white/5 text-amber-300 font-mono text-xs">DATABASE_URL</code>
+              Set the
+              <code class="px-1.5 py-0.5 rounded bg-white/5 text-amber-300 font-mono text-xs">
+                DATABASE_URL
+              </code>
               environment variable to connect to your Postgres database.
             </p>
           </div>
@@ -191,7 +204,10 @@ defmodule PgpeekWeb.DashboardLive do
                 <.icon name="hero-fire" class="size-5 text-orange-400" />
                 <h2 class="text-base font-semibold text-white">Top Queries by Total Time</h2>
               </div>
-              <.link navigate={~p"/queries"} class="text-xs font-medium text-blue-400 hover:text-blue-300 transition-colors">
+              <.link
+                navigate={~p"/queries"}
+                class="text-xs font-medium text-blue-400 hover:text-blue-300 transition-colors"
+              >
                 View all &rarr;
               </.link>
             </div>
@@ -199,43 +215,58 @@ defmodule PgpeekWeb.DashboardLive do
               <table class="w-full">
                 <thead>
                   <tr class="border-b border-white/5">
-                    <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Query</th>
-                    <th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-500">Total Time</th>
-                    <th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-500">Mean</th>
-                    <th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-500">Calls</th>
-                    <th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-500 hidden sm:table-cell">Delta</th>
-                    <th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-500 hidden md:table-cell">Rows</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">
+                      Query
+                    </th>
+                    <th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-500">
+                      Total Time
+                    </th>
+                    <th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-500">
+                      Mean
+                    </th>
+                    <th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-500">
+                      Calls
+                    </th>
+                    <th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-500 hidden sm:table-cell">
+                      Delta
+                    </th>
+                    <th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-500 hidden md:table-cell">
+                      Rows
+                    </th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-white/5">
                   <%= for delta <- @deltas do %>
                     <tr class="group hover:bg-white/[0.02] transition-colors">
                       <td class="max-w-xs truncate px-6 py-3 text-sm font-mono text-slate-300">
-                        <.link navigate={~p"/queries/#{delta.stat.query_id}"} class="hover:text-blue-400 transition-colors">
-                          <%= truncate_query(delta.stat.query_text) %>
+                        <.link
+                          navigate={~p"/queries/#{delta.stat.query_id}"}
+                          class="hover:text-blue-400 transition-colors"
+                        >
+                          {truncate_query(delta.stat.query_text)}
                         </.link>
                       </td>
                       <td class="whitespace-nowrap px-4 py-3 text-right text-sm tabular-nums text-slate-300">
-                        <%= format_time(delta.stat.total_exec_time) %>
+                        {format_time(delta.stat.total_exec_time)}
                       </td>
                       <td class="whitespace-nowrap px-4 py-3 text-right text-sm tabular-nums text-slate-400">
-                        <%= format_time(delta.stat.mean_exec_time) %>
+                        {format_time(delta.stat.mean_exec_time)}
                       </td>
                       <td class="whitespace-nowrap px-4 py-3 text-right text-sm tabular-nums text-slate-400">
-                        <%= format_number(delta.stat.calls) %>
+                        {format_number(delta.stat.calls)}
                       </td>
                       <td class={"whitespace-nowrap px-4 py-3 text-right text-sm tabular-nums hidden sm:table-cell #{delta_color(delta.delta_calls)}"}>
                         <%= if delta.delta_calls > 0 do %>
                           <span class="inline-flex items-center gap-0.5">
                             <.icon name="hero-arrow-up-micro" class="size-3" />
-                            <%= format_number(delta.delta_calls) %>
+                            {format_number(delta.delta_calls)}
                           </span>
                         <% else %>
-                          <%= format_number(delta.delta_calls) %>
+                          {format_number(delta.delta_calls)}
                         <% end %>
                       </td>
                       <td class="whitespace-nowrap px-4 py-3 text-right text-sm tabular-nums text-slate-400 hidden md:table-cell">
-                        <%= format_number(delta.stat.rows) %>
+                        {format_number(delta.stat.rows)}
                       </td>
                     </tr>
                   <% end %>
@@ -246,7 +277,9 @@ defmodule PgpeekWeb.DashboardLive do
                   <div class="mx-auto flex items-center justify-center size-10 rounded-full bg-white/5 mb-3">
                     <.icon name="hero-clock" class="size-5 text-slate-500" />
                   </div>
-                  <p class="text-sm text-slate-500">No query data yet. Waiting for first snapshot...</p>
+                  <p class="text-sm text-slate-500">
+                    No query data yet. Waiting for first snapshot...
+                  </p>
                 </div>
               <% end %>
             </div>
@@ -271,7 +304,12 @@ defmodule PgpeekWeb.DashboardLive do
       "amber" => "bg-amber-500/10 text-amber-400"
     }
 
-    assigns = assign(assigns, :color_class, Map.get(color_classes, assigns.color, "bg-white/10 text-white"))
+    assigns =
+      assign(
+        assigns,
+        :color_class,
+        Map.get(color_classes, assigns.color, "bg-white/10 text-white")
+      )
 
     ~H"""
     <div class="glass-card p-5">
@@ -303,8 +341,18 @@ defmodule PgpeekWeb.DashboardLive do
       end
 
     color_classes = %{
-      "red" => %{bg: "bg-red-500/10", border: "border-red-500/20", icon: "text-red-400", badge: "bg-red-500/10 text-red-400"},
-      "amber" => %{bg: "bg-amber-500/10", border: "border-amber-500/20", icon: "text-amber-400", badge: "bg-amber-500/10 text-amber-400"}
+      "red" => %{
+        bg: "bg-red-500/10",
+        border: "border-red-500/20",
+        icon: "text-red-400",
+        badge: "bg-red-500/10 text-red-400"
+      },
+      "amber" => %{
+        bg: "bg-amber-500/10",
+        border: "border-amber-500/20",
+        icon: "text-amber-400",
+        badge: "bg-amber-500/10 text-amber-400"
+      }
     }
 
     c = Map.get(color_classes, color)
@@ -327,8 +375,11 @@ defmodule PgpeekWeb.DashboardLive do
               {@label}
             </span>
           </div>
-          <.link navigate={~p"/queries/#{@query_id}"} class="block text-sm font-mono text-slate-300 truncate hover:text-blue-400 transition-colors">
-            <%= truncate_query(@query_text) %>
+          <.link
+            navigate={~p"/queries/#{@query_id}"}
+            class="block text-sm font-mono text-slate-300 truncate hover:text-blue-400 transition-colors"
+          >
+            {truncate_query(@query_text)}
           </.link>
           <p class="mt-1 text-xs text-slate-500">{@detail}</p>
         </div>
@@ -346,7 +397,10 @@ defmodule PgpeekWeb.DashboardLive do
   defp format_time(ms), do: "#{Float.round(ms * 1.0, 2)}ms"
 
   defp format_number(nil), do: "-"
-  defp format_number(n) when is_integer(n) and n >= 1_000_000, do: "#{Float.round(n / 1_000_000, 1)}M"
+
+  defp format_number(n) when is_integer(n) and n >= 1_000_000,
+    do: "#{Float.round(n / 1_000_000, 1)}M"
+
   defp format_number(n) when is_integer(n) and n >= 1_000, do: "#{Float.round(n / 1_000, 1)}K"
   defp format_number(n), do: to_string(n)
 

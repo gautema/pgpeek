@@ -14,7 +14,11 @@ defmodule PgpeekWeb.DeployController do
       {:ok, deploy} ->
         conn
         |> put_status(:created)
-        |> json(%{id: deploy.id, deployed_at: deploy.deployed_at, description: deploy.description})
+        |> json(%{
+          id: deploy.id,
+          deployed_at: deploy.deployed_at,
+          description: deploy.description
+        })
 
       {:error, changeset} ->
         conn

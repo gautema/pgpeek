@@ -3,10 +3,10 @@ defmodule Pgpeek.Schemas.User do
   import Ecto.Changeset
 
   schema "users" do
-    field :email, :string
-    field :password_hash, :string
-    field :password, :string, virtual: true
-    field :last_login_at, :utc_datetime
+    field(:email, :string)
+    field(:password_hash, :string)
+    field(:password, :string, virtual: true)
+    field(:last_login_at, :utc_datetime)
 
     timestamps(type: :utc_datetime)
   end

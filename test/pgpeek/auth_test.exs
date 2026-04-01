@@ -66,7 +66,8 @@ defmodule Pgpeek.AuthTest do
     test "returns error with wrong password" do
       create_user()
 
-      assert {:error, :invalid_password} = Auth.authenticate("admin@pgpeek.local", "wrongpassword")
+      assert {:error, :invalid_password} =
+               Auth.authenticate("admin@pgpeek.local", "wrongpassword")
     end
 
     test "returns error when user not found" do

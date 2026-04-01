@@ -7,115 +7,145 @@ defmodule PgpeekWeb.DiagnoseLive do
   @checks %{
     "cache_hit" => %{
       label: "Cache Hit Ratio",
-      desc: "Percentage of database reads served from shared buffer cache vs disk. Below 99% on production usually means shared_buffers is too small."
+      desc:
+        "Percentage of database reads served from shared buffer cache vs disk. Below 99% on production usually means shared_buffers is too small."
     },
     "table_cache_hit" => %{
       label: "Table Cache Hit",
-      desc: "Per-table heap block cache hit ratio. Tables with low ratios are being read from disk frequently — consider increasing shared_buffers or optimizing queries."
+      desc:
+        "Per-table heap block cache hit ratio. Tables with low ratios are being read from disk frequently — consider increasing shared_buffers or optimizing queries."
     },
     "index_cache_hit" => %{
       label: "Index Cache Hit",
-      desc: "Per-index block cache hit ratio. Indexes with low ratios cause slow lookups as pages are fetched from disk instead of memory."
+      desc:
+        "Per-index block cache hit ratio. Indexes with low ratios cause slow lookups as pages are fetched from disk instead of memory."
     },
     "missing_fk_indexes" => %{
       label: "Missing FK Indexes",
-      desc: "Foreign key columns without a supporting index. These cause slow cascading deletes and expensive joins. Adding an index is almost always the right fix."
+      desc:
+        "Foreign key columns without a supporting index. These cause slow cascading deletes and expensive joins. Adding an index is almost always the right fix."
     },
     "unused_indexes" => %{
       label: "Unused Indexes",
-      desc: "Non-unique indexes with zero scans since the last stats reset. Each unused index slows down writes and wastes disk space. Safe to drop if stats have been accumulating for a representative period."
+      desc:
+        "Non-unique indexes with zero scans since the last stats reset. Each unused index slows down writes and wastes disk space. Safe to drop if stats have been accumulating for a representative period."
     },
     "duplicate_indexes" => %{
       label: "Duplicate Indexes",
-      desc: "Indexes covering the same columns in the same order on the same table. Only one is needed — the rest waste space and slow writes."
+      desc:
+        "Indexes covering the same columns in the same order on the same table. Only one is needed — the rest waste space and slow writes."
     },
     "null_indexes" => %{
       label: "Null Indexes",
-      desc: "Single-column indexes on nullable columns without a partial index condition. If most rows are NULL, a partial index with WHERE column IS NOT NULL would be much smaller."
+      desc:
+        "Single-column indexes on nullable columns without a partial index condition. If most rows are NULL, a partial index with WHERE column IS NOT NULL would be much smaller."
     },
     "index_usage" => %{
       label: "Index Usage",
-      desc: "Ratio of index scans to sequential scans per table. Tables with low index usage and many rows may be missing indexes, or queries aren't using existing ones."
+      desc:
+        "Ratio of index scans to sequential scans per table. Tables with low index usage and many rows may be missing indexes, or queries aren't using existing ones."
     },
     "index_sizes" => %{
       label: "Index Sizes",
-      desc: "All indexes sorted by size on disk. Large indexes that are rarely scanned are candidates for removal or restructuring."
+      desc:
+        "All indexes sorted by size on disk. Large indexes that are rarely scanned are candidates for removal or restructuring."
     },
     "table_sizes" => %{
       label: "Table Sizes",
-      desc: "Total disk footprint per table including heap, toast, and all indexes. Helps identify the largest consumers of storage."
+      desc:
+        "Total disk footprint per table including heap, toast, and all indexes. Helps identify the largest consumers of storage."
     },
     "vacuum_stats" => %{
       label: "Vacuum Stats",
-      desc: "Dead tuple counts and last vacuum/analyze timestamps. High dead tuple ratios indicate autovacuum is falling behind — rows can't be reclaimed until vacuumed."
+      desc:
+        "Dead tuple counts and last vacuum/analyze timestamps. High dead tuple ratios indicate autovacuum is falling behind — rows can't be reclaimed until vacuumed."
     },
     "seq_scans" => %{
       label: "Sequential Scans",
-      desc: "Tables with the most sequential (full table) scans. Frequent seq scans on large tables usually means a missing index. Small tables are fine."
+      desc:
+        "Tables with the most sequential (full table) scans. Frequent seq scans on large tables usually means a missing index. Small tables are fine."
     },
     "records_rank" => %{
       label: "Records Rank",
-      desc: "Tables ranked by estimated live row count. Useful for understanding data distribution and identifying unexpectedly large tables."
+      desc:
+        "Tables ranked by estimated live row count. Useful for understanding data distribution and identifying unexpectedly large tables."
     },
     "long_running" => %{
       label: "Long Running Queries",
-      desc: "Currently executing queries running longer than 5 seconds. Long-running queries hold locks and consume resources. Check for missing indexes or inefficient plans."
+      desc:
+        "Currently executing queries running longer than 5 seconds. Long-running queries hold locks and consume resources. Check for missing indexes or inefficient plans."
     },
     "outliers" => %{
       label: "Outliers",
-      desc: "Queries ranked by total execution time from pg_stat_statements. These are the queries consuming the most database time overall — the best optimization targets."
+      desc:
+        "Queries ranked by total execution time from pg_stat_statements. These are the queries consuming the most database time overall — the best optimization targets."
     },
     "by_calls" => %{
       label: "Calls",
-      desc: "Queries ranked by call frequency. High-frequency queries with even small improvements yield large cumulative gains."
+      desc:
+        "Queries ranked by call frequency. High-frequency queries with even small improvements yield large cumulative gains."
     },
     "connection_summary" => %{
       label: "Summary",
-      desc: "Connection counts vs max_connections limit. Approaching the limit causes connection refused errors. Idle-in-transaction connections hold locks and block autovacuum."
+      desc:
+        "Connection counts vs max_connections limit. Approaching the limit causes connection refused errors. Idle-in-transaction connections hold locks and block autovacuum."
     },
     "current_connections" => %{
       label: "Connections",
-      desc: "Active connections grouped by user, application, and state. Helps identify which application or service is consuming the most connections."
+      desc:
+        "Active connections grouped by user, application, and state. Helps identify which application or service is consuming the most connections."
     },
     "locks" => %{
       label: "Waiting Locks",
-      desc: "Lock requests that have not yet been granted. Queries waiting on locks are blocked and cannot proceed until the holder releases. Investigate the blocking query."
+      desc:
+        "Lock requests that have not yet been granted. Queries waiting on locks are blocked and cannot proceed until the holder releases. Investigate the blocking query."
     },
     "blocking" => %{
       label: "Blocking Queries",
-      desc: "Queries that are actively blocking other queries from proceeding. Shows both the blocker and the blocked query so you can decide which to cancel."
+      desc:
+        "Queries that are actively blocking other queries from proceeding. Shows both the blocker and the blocked query so you can decide which to cancel."
     },
     "all_locks" => %{
       label: "All Locks",
-      desc: "Every lock currently held or awaited in the database. Useful for understanding the full locking picture during complex debugging."
+      desc:
+        "Every lock currently held or awaited in the database. Useful for understanding the full locking picture during complex debugging."
     },
     "db_settings" => %{
       label: "DB Settings",
-      desc: "Key performance-related PostgreSQL configuration parameters. Compare against recommended values for your workload and hardware."
+      desc:
+        "Key performance-related PostgreSQL configuration parameters. Compare against recommended values for your workload and hardware."
     },
     "extensions" => %{
       label: "Extensions",
-      desc: "Installed PostgreSQL extensions. pg_stat_statements is required for PgPeek query tracking. Other useful extensions include pg_trgm, btree_gist, and pgcrypto."
+      desc:
+        "Installed PostgreSQL extensions. pg_stat_statements is required for PgPeek query tracking. Other useful extensions include pg_trgm, btree_gist, and pgcrypto."
     },
     "database_size" => %{
       label: "Database Size",
-      desc: "Total on-disk size of the current database including all tables, indexes, and toast data."
+      desc:
+        "Total on-disk size of the current database including all tables, indexes, and toast data."
     },
     "missing_fk_constraints" => %{
       label: "Missing FK Constraints",
-      desc: "Columns ending in _id that have no foreign key constraint. This is a heuristic — some may be intentional (polymorphic IDs, external references) but many are oversights."
+      desc:
+        "Columns ending in _id that have no foreign key constraint. This is a heuristic — some may be intentional (polymorphic IDs, external references) but many are oversights."
     }
   }
 
   @categories [
-    {"health", "Health", "hero-heart",
-     ["cache_hit", "table_cache_hit", "index_cache_hit"]},
+    {"health", "Health", "hero-heart", ["cache_hit", "table_cache_hit", "index_cache_hit"]},
     {"indexes", "Indexes", "hero-list-bullet",
-     ["missing_fk_indexes", "unused_indexes", "duplicate_indexes", "null_indexes", "index_usage", "index_sizes"]},
+     [
+       "missing_fk_indexes",
+       "unused_indexes",
+       "duplicate_indexes",
+       "null_indexes",
+       "index_usage",
+       "index_sizes"
+     ]},
     {"tables", "Tables", "hero-table-cells",
      ["table_sizes", "vacuum_stats", "seq_scans", "records_rank"]},
-    {"queries", "Queries", "hero-command-line",
-     ["long_running", "outliers", "by_calls"]},
+    {"queries", "Queries", "hero-command-line", ["long_running", "outliers", "by_calls"]},
     {"connections", "Connections", "hero-signal",
      ["connection_summary", "current_connections", "locks", "blocking", "all_locks"]},
     {"system", "System", "hero-cog-6-tooth",
@@ -172,7 +202,11 @@ defmodule PgpeekWeb.DiagnoseLive do
     check = get_check(socket.assigns.active_check)
 
     {advice, error} =
-      case Pgpeek.QueryExplainer.advise_diagnostic(check.label, check.desc, socket.assigns.results || []) do
+      case Pgpeek.QueryExplainer.advise_diagnostic(
+             check.label,
+             check.desc,
+             socket.assigns.results || []
+           ) do
         {:ok, text} -> {text, nil}
         {:error, msg} -> {nil, to_string(msg)}
       end
@@ -255,7 +289,11 @@ defmodule PgpeekWeb.DiagnoseLive do
             </div>
             <h2 class="text-lg font-semibold text-white">No database configured</h2>
             <p class="mt-2 text-sm text-slate-400">
-              Set <code class="px-1.5 py-0.5 rounded bg-white/5 text-amber-300 font-mono text-xs">DATABASE_URL</code> to run diagnostics.
+              Set
+              <code class="px-1.5 py-0.5 rounded bg-white/5 text-amber-300 font-mono text-xs">
+                DATABASE_URL
+              </code>
+              to run diagnostics.
             </p>
           </div>
         <% else %>
@@ -266,7 +304,9 @@ defmodule PgpeekWeb.DiagnoseLive do
                 <div class="glass-card overflow-hidden">
                   <div class="flex items-center gap-2 px-4 py-2.5 border-b border-white/5">
                     <.icon name={cat_icon} class="size-4 text-slate-500" />
-                    <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">{cat_name}</span>
+                    <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      {cat_name}
+                    </span>
                   </div>
                   <div class="py-1">
                     <%= for check_id <- check_ids do %>
@@ -301,7 +341,6 @@ defmodule PgpeekWeb.DiagnoseLive do
                     </div>
                     <p class="text-sm text-slate-400">Running diagnostic...</p>
                   </div>
-
                 <% @error -> %>
                   <div class="glass-card p-8 text-center">
                     <div class="mx-auto flex items-center justify-center size-10 rounded-full bg-red-500/10 mb-3">
@@ -309,7 +348,6 @@ defmodule PgpeekWeb.DiagnoseLive do
                     </div>
                     <p class="text-sm text-red-400">{@error}</p>
                   </div>
-
                 <% @results != nil -> %>
                   <% check = get_check(@active_check) %>
                   <div class="glass-card overflow-hidden">
@@ -325,7 +363,8 @@ defmodule PgpeekWeb.DiagnoseLive do
                                 "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
                                 if(@ai_loading,
                                   do: "bg-white/5 text-slate-500 cursor-wait",
-                                  else: "bg-violet-500/10 text-violet-400 hover:bg-violet-500/20 cursor-pointer"
+                                  else:
+                                    "bg-violet-500/10 text-violet-400 hover:bg-violet-500/20 cursor-pointer"
                                 )
                               ]}
                             >
@@ -333,12 +372,11 @@ defmodule PgpeekWeb.DiagnoseLive do
                                 <.icon name="hero-arrow-path" class="size-3.5 animate-spin" />
                                 Thinking...
                               <% else %>
-                                <.icon name="hero-sparkles" class="size-3.5" />
-                                What should I do?
+                                <.icon name="hero-sparkles" class="size-3.5" /> What should I do?
                               <% end %>
                             </button>
                           <% end %>
-                          <span class="text-xs text-slate-500"><%= length(@results) %> results</span>
+                          <span class="text-xs text-slate-500">{length(@results)} results</span>
                         </div>
                       </div>
                       <p class="mt-1 text-sm text-slate-500">{check.desc}</p>
@@ -362,23 +400,24 @@ defmodule PgpeekWeb.DiagnoseLive do
                     <div class="glass-card overflow-hidden mt-4">
                       <div class="flex items-center gap-2 px-6 py-3 border-b border-white/5">
                         <.icon name="hero-sparkles" class="size-4 text-violet-400" />
-                        <h2 class="text-xs font-medium uppercase tracking-wider text-slate-500">AI Advice</h2>
+                        <h2 class="text-xs font-medium uppercase tracking-wider text-slate-500">
+                          AI Advice
+                        </h2>
                       </div>
                       <%= if @ai_error do %>
                         <div class="p-6">
                           <div class="flex items-start gap-3">
                             <.icon name="hero-x-circle" class="size-5 text-red-400 shrink-0 mt-0.5" />
-                            <p class="text-sm text-red-400"><%= @ai_error %></p>
+                            <p class="text-sm text-red-400">{@ai_error}</p>
                           </div>
                         </div>
                       <% else %>
                         <div class="p-6 markdown-content">
-                          <%= raw(render_markdown(@ai_advice)) %>
+                          {raw(render_markdown(@ai_advice))}
                         </div>
                       <% end %>
                     </div>
                   <% end %>
-
                 <% true -> %>
                   <div class="glass-card p-16 text-center">
                     <div class="mx-auto flex items-center justify-center size-10 rounded-full bg-white/5 mb-3">

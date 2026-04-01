@@ -25,14 +25,22 @@ defmodule Pgpeek.Schemas.AlertTest do
 
     test "requires threshold" do
       changeset =
-        Alert.changeset(%Alert{}, %{metric: "mean_exec_time", channel: "slack", destination: "#alerts"})
+        Alert.changeset(%Alert{}, %{
+          metric: "mean_exec_time",
+          channel: "slack",
+          destination: "#alerts"
+        })
 
       refute changeset.valid?
     end
 
     test "requires channel" do
       changeset =
-        Alert.changeset(%Alert{}, %{metric: "mean_exec_time", threshold: 100.0, destination: "#alerts"})
+        Alert.changeset(%Alert{}, %{
+          metric: "mean_exec_time",
+          threshold: 100.0,
+          destination: "#alerts"
+        })
 
       refute changeset.valid?
     end
