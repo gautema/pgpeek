@@ -372,12 +372,7 @@ defmodule PgpeekWeb.DiagnoseLive do
                           </div>
                         </div>
                       <% else %>
-                        <div class="p-6 prose prose-invert prose-sm max-w-none
-                                    prose-headings:text-slate-200 prose-headings:text-sm prose-headings:font-semibold prose-headings:mt-4 prose-headings:mb-2
-                                    prose-p:text-slate-300 prose-p:leading-relaxed
-                                    prose-li:text-slate-300
-                                    prose-code:text-blue-300 prose-code:bg-white/5 prose-code:px-1 prose-code:rounded
-                                    prose-strong:text-slate-200">
+                        <div class="p-6 markdown-content">
                           <%= raw(render_markdown(@ai_advice)) %>
                         </div>
                       <% end %>
