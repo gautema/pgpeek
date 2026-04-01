@@ -5,11 +5,13 @@ defmodule PgpeekWeb.SettingsLive do
   alias Pgpeek.Settings
 
   @known_models [
-    "anthropic:claude-haiku-4-5", "anthropic:claude-sonnet-4-5", "anthropic:claude-opus-4",
-    "openai:gpt-4o-mini", "openai:gpt-4o", "openai:o3-mini",
-    "google:gemini-2.0-flash", "google:gemini-2.5-pro",
+    "anthropic:claude-haiku-4-5-20251001", "anthropic:claude-sonnet-4-5-20250929",
+    "anthropic:claude-opus-4-20250514",
+    "openai:gpt-4.1-mini", "openai:gpt-4.1", "openai:gpt-5",
+    "openai:o3-mini", "openai:o4-mini",
+    "google:gemini-2.5-flash", "google:gemini-2.5-pro",
     "groq:llama-3.3-70b-versatile",
-    "ollama:llama3", "ollama:mistral", "ollama:codellama"
+    "ollama:llama3", "ollama:mistral", "ollama:qwen2.5-coder"
   ]
 
   @impl true
@@ -187,17 +189,19 @@ defmodule PgpeekWeb.SettingsLive do
                 >
                   <option value="" class="bg-slate-900">None (disabled)</option>
                   <optgroup label="Anthropic" class="bg-slate-900">
-                    <option value="anthropic:claude-haiku-4-5" selected={@llm_model == "anthropic:claude-haiku-4-5"} class="bg-slate-900">Claude Haiku 4.5 (fast, cheap)</option>
-                    <option value="anthropic:claude-sonnet-4-5" selected={@llm_model == "anthropic:claude-sonnet-4-5"} class="bg-slate-900">Claude Sonnet 4.5 (balanced)</option>
-                    <option value="anthropic:claude-opus-4" selected={@llm_model == "anthropic:claude-opus-4"} class="bg-slate-900">Claude Opus 4 (best)</option>
+                    <option value="anthropic:claude-haiku-4-5-20251001" selected={@llm_model == "anthropic:claude-haiku-4-5-20251001"} class="bg-slate-900">Claude Haiku 4.5 (fast, cheap)</option>
+                    <option value="anthropic:claude-sonnet-4-5-20250929" selected={@llm_model == "anthropic:claude-sonnet-4-5-20250929"} class="bg-slate-900">Claude Sonnet 4.5 (balanced)</option>
+                    <option value="anthropic:claude-opus-4-20250514" selected={@llm_model == "anthropic:claude-opus-4-20250514"} class="bg-slate-900">Claude Opus 4 (best)</option>
                   </optgroup>
                   <optgroup label="OpenAI" class="bg-slate-900">
-                    <option value="openai:gpt-4o-mini" selected={@llm_model == "openai:gpt-4o-mini"} class="bg-slate-900">GPT-4o Mini (fast, cheap)</option>
-                    <option value="openai:gpt-4o" selected={@llm_model == "openai:gpt-4o"} class="bg-slate-900">GPT-4o (balanced)</option>
+                    <option value="openai:gpt-4.1-mini" selected={@llm_model == "openai:gpt-4.1-mini"} class="bg-slate-900">GPT-4.1 Mini (fast, cheap)</option>
+                    <option value="openai:gpt-4.1" selected={@llm_model == "openai:gpt-4.1"} class="bg-slate-900">GPT-4.1 (balanced)</option>
+                    <option value="openai:gpt-5" selected={@llm_model == "openai:gpt-5"} class="bg-slate-900">GPT-5 (best)</option>
                     <option value="openai:o3-mini" selected={@llm_model == "openai:o3-mini"} class="bg-slate-900">o3-mini (reasoning)</option>
+                    <option value="openai:o4-mini" selected={@llm_model == "openai:o4-mini"} class="bg-slate-900">o4-mini (reasoning)</option>
                   </optgroup>
                   <optgroup label="Google" class="bg-slate-900">
-                    <option value="google:gemini-2.0-flash" selected={@llm_model == "google:gemini-2.0-flash"} class="bg-slate-900">Gemini 2.0 Flash (fast)</option>
+                    <option value="google:gemini-2.5-flash" selected={@llm_model == "google:gemini-2.5-flash"} class="bg-slate-900">Gemini 2.5 Flash (fast)</option>
                     <option value="google:gemini-2.5-pro" selected={@llm_model == "google:gemini-2.5-pro"} class="bg-slate-900">Gemini 2.5 Pro</option>
                   </optgroup>
                   <optgroup label="Groq" class="bg-slate-900">
@@ -206,7 +210,7 @@ defmodule PgpeekWeb.SettingsLive do
                   <optgroup label="Local (Ollama)" class="bg-slate-900">
                     <option value="ollama:llama3" selected={@llm_model == "ollama:llama3"} class="bg-slate-900">Llama 3 (no API key needed)</option>
                     <option value="ollama:mistral" selected={@llm_model == "ollama:mistral"} class="bg-slate-900">Mistral (no API key needed)</option>
-                    <option value="ollama:codellama" selected={@llm_model == "ollama:codellama"} class="bg-slate-900">Code Llama (no API key needed)</option>
+                    <option value="ollama:qwen2.5-coder" selected={@llm_model == "ollama:qwen2.5-coder"} class="bg-slate-900">Qwen 2.5 Coder (no API key needed)</option>
                   </optgroup>
                   <%= if @llm_model != "" and not Enum.member?(@known_models, @llm_model) do %>
                     <optgroup label="Custom" class="bg-slate-900">

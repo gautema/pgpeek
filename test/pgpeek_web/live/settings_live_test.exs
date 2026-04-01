@@ -78,11 +78,11 @@ defmodule PgpeekWeb.SettingsLiveTest do
     {:ok, view, _html} = live(conn, "/settings")
 
     view
-    |> form("#llm-form", %{llm: %{model: "openai:gpt-4o-mini", api_key: "sk-test"}})
+    |> form("#llm-form", %{llm: %{model: "openai:gpt-4.1-mini", api_key: "sk-test"}})
     |> render_submit()
 
     assert has_element?(view, "div", "LLM configuration saved")
-    assert Pgpeek.Settings.get("llm_model") == "openai:gpt-4o-mini"
+    assert Pgpeek.Settings.get("llm_model") == "openai:gpt-4.1-mini"
     assert Pgpeek.Settings.get("llm_api_key") == "sk-test"
   end
 
