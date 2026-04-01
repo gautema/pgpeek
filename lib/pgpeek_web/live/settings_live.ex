@@ -2,10 +2,13 @@ defmodule PgpeekWeb.SettingsLive do
   use PgpeekWeb, :live_view
 
   alias Pgpeek.Auth
+  alias Pgpeek.Settings
 
   @impl true
   def mount(_params, _session, socket) do
     users = Auth.list_users()
+    llm_model = Settings.get("llm_model", "")
+    llm_api_key = Settings.get("llm_api_key", "")
 
     socket =
       socket
@@ -15,6 +18,10 @@ defmodule PgpeekWeb.SettingsLive do
       |> assign(:password_saved, false)
       |> assign(:new_user_form, to_form(%{"email" => "", "password" => ""}, as: :user))
       |> assign(:new_user_error, nil)
+      |> assign(:llm_model, llm_model)
+      |> assign(:llm_api_key, llm_api_key)
+      |> assign(:llm_testing, false)
+      |> assign(:llm_test_result, nil)
 
     {:ok, socket}
   end
@@ -26,23 +33,16 @@ defmodule PgpeekWeb.SettingsLive do
 
     cond do
       password != confirmation ->
-        {:noreply,
-         socket
-         |> assign(:password_saved, false)
-         |> put_flash(:error, "Passwords do not match")}
+        {:noreply, put_flash(socket, :error, "Passwords do not match")}
 
       String.length(password) < 8 ->
-        {:noreply,
-         socket
-         |> assign(:password_saved, false)
-         |> put_flash(:error, "Password must be at least 8 characters")}
+        {:noreply, put_flash(socket, :error, "Password must be at least 8 characters")}
 
       true ->
         case Auth.change_password(socket.assigns.current_user, %{password: password}) do
           {:ok, _user} ->
             {:noreply,
              socket
-             |> assign(:password_saved, true)
              |> assign(:password_form, to_form(%{"password" => "", "password_confirmation" => ""}, as: :password))
              |> put_flash(:info, "Password updated successfully")}
 
@@ -52,7 +52,46 @@ defmodule PgpeekWeb.SettingsLive do
     end
   end
 
-  @impl true
+  def handle_event("save_llm", %{"llm" => params}, socket) do
+    model = String.trim(params["model"] || "")
+    api_key = String.trim(params["api_key"] || "")
+
+    if model == "" do
+      Settings.delete("llm_model")
+      Settings.delete("llm_api_key")
+
+      {:noreply,
+       socket
+       |> assign(:llm_model, "")
+       |> assign(:llm_api_key, "")
+       |> assign(:llm_test_result, nil)
+       |> put_flash(:info, "LLM configuration cleared")}
+    else
+      Settings.put("llm_model", model)
+      Settings.put("llm_api_key", api_key)
+
+      {:noreply,
+       socket
+       |> assign(:llm_model, model)
+       |> assign(:llm_api_key, api_key)
+       |> assign(:llm_test_result, nil)
+       |> put_flash(:info, "LLM configuration saved")}
+    end
+  end
+
+  def handle_event("test_llm", _params, socket) do
+    model = socket.assigns.llm_model
+    api_key = socket.assigns.llm_api_key
+
+    if model == "" do
+      {:noreply, assign(socket, :llm_test_result, {:error, "No model configured"})}
+    else
+      socket = assign(socket, :llm_testing, true)
+      send(self(), {:test_llm, model, api_key})
+      {:noreply, socket}
+    end
+  end
+
   def handle_event("create_user", %{"user" => params}, socket) do
     case Auth.create_user(params) do
       {:ok, _user} ->
@@ -80,7 +119,6 @@ defmodule PgpeekWeb.SettingsLive do
     end
   end
 
-  @impl true
   def handle_event("delete_user", %{"id" => id}, socket) do
     user = Auth.get_user!(String.to_integer(id))
 
@@ -97,13 +135,116 @@ defmodule PgpeekWeb.SettingsLive do
   end
 
   @impl true
+  def handle_info({:test_llm, model, api_key}, socket) do
+    result = Pgpeek.QueryExplainer.test_connection(model, api_key)
+
+    socket =
+      socket
+      |> assign(:llm_testing, false)
+      |> assign(:llm_test_result, result)
+
+    {:noreply, socket}
+  end
+
+  @impl true
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash} current_user={@current_user}>
       <div class="space-y-8">
         <div>
           <h1 class="text-2xl font-bold text-white">Settings</h1>
-          <p class="mt-1 text-sm text-slate-400">Manage your account and users</p>
+          <p class="mt-1 text-sm text-slate-400">Manage your account, users, and integrations</p>
+        </div>
+
+        <%!-- LLM Configuration --%>
+        <div class="glass-card overflow-hidden">
+          <div class="flex items-center gap-2 px-6 py-4 border-b border-white/5">
+            <.icon name="hero-sparkles" class="size-5 text-violet-400" />
+            <h2 class="text-base font-semibold text-white">AI Query Explanations</h2>
+          </div>
+          <div class="p-6">
+            <p class="text-sm text-slate-400 mb-4">
+              Connect an LLM to get plain English explanations and optimization suggestions for your queries.
+              Supports OpenAI, Anthropic, Google, Groq, Ollama, and more via
+              <span class="text-slate-300">req_llm</span>.
+            </p>
+            <.form for={%{}} phx-submit="save_llm" id="llm-form" class="max-w-lg space-y-4">
+              <div>
+                <label for="llm-model" class="block text-sm font-medium text-slate-400 mb-1.5">Model</label>
+                <input
+                  type="text"
+                  name="llm[model]"
+                  id="llm-model"
+                  value={@llm_model}
+                  class="w-full rounded-lg border border-white/10 bg-white/5 px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/50 focus:outline-none transition-colors"
+                  placeholder="anthropic:claude-haiku-4-5"
+                />
+                <p class="mt-1.5 text-xs text-slate-500">
+                  Format: <code class="text-slate-400">provider:model-id</code>.
+                  Examples: <code class="text-slate-400">openai:gpt-4o-mini</code>,
+                  <code class="text-slate-400">anthropic:claude-haiku-4-5</code>,
+                  <code class="text-slate-400">ollama:llama3</code>
+                </p>
+              </div>
+              <div>
+                <label for="llm-api-key" class="block text-sm font-medium text-slate-400 mb-1.5">API Key</label>
+                <input
+                  type="password"
+                  name="llm[api_key]"
+                  id="llm-api-key"
+                  value={@llm_api_key}
+                  autocomplete="off"
+                  class="w-full rounded-lg border border-white/10 bg-white/5 px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/50 focus:outline-none transition-colors"
+                  placeholder="sk-ant-... or sk-..."
+                />
+                <p class="mt-1.5 text-xs text-slate-500">
+                  Not needed for local models (Ollama). Stored in SQLite, not sent anywhere except the provider.
+                </p>
+              </div>
+              <div class="flex items-center gap-3">
+                <button
+                  type="submit"
+                  class="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500 transition-colors cursor-pointer"
+                >
+                  Save
+                </button>
+                <button
+                  type="button"
+                  phx-click="test_llm"
+                  disabled={@llm_testing}
+                  class={[
+                    "rounded-lg border px-4 py-2 text-sm font-medium transition-colors cursor-pointer",
+                    if(@llm_testing,
+                      do: "border-white/5 text-slate-500 cursor-wait",
+                      else: "border-white/10 text-slate-300 hover:bg-white/5"
+                    )
+                  ]}
+                >
+                  <%= if @llm_testing do %>
+                    <span class="inline-flex items-center gap-1.5">
+                      <.icon name="hero-arrow-path" class="size-3.5 animate-spin" />
+                      Testing...
+                    </span>
+                  <% else %>
+                    Test Connection
+                  <% end %>
+                </button>
+                <%= case @llm_test_result do %>
+                  <% :ok -> %>
+                    <span class="inline-flex items-center gap-1 text-sm text-emerald-400">
+                      <.icon name="hero-check-circle" class="size-4" />
+                      Connected
+                    </span>
+                  <% {:error, msg} -> %>
+                    <span class="inline-flex items-center gap-1 text-sm text-red-400">
+                      <.icon name="hero-x-circle" class="size-4" />
+                      {msg}
+                    </span>
+                  <% _ -> %>
+                <% end %>
+              </div>
+            </.form>
+          </div>
         </div>
 
         <%!-- Change Password --%>

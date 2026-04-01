@@ -52,14 +52,17 @@ defmodule Pgpeek.ProbeRepo do
   Useful for PREPARE/EXECUTE/DEALLOCATE sequences where statements
   are connection-local.
 
-  Uses DBConnection.run/3 instead of a transaction so that
-  `{:error, _}` return values from the callback are passed through
-  as-is rather than triggering a rollback.
+  Wraps the callback result to prevent `{:error, _}` returns from
+  triggering a transaction rollback, then unwraps so the caller
+  sees the original return value.
   """
   def with_conn(fun) do
-    DBConnection.run(__MODULE__, fn conn ->
-      fun.(conn)
-    end)
+    case Postgrex.transaction(__MODULE__, fn conn ->
+      {:wrapped, fun.(conn)}
+    end) do
+      {:ok, {:wrapped, result}} -> result
+      {:error, error} -> {:error, error}
+    end
   end
 
   @doc "Check if we have a real Postgres connection configured."

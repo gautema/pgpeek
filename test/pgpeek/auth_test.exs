@@ -1,5 +1,5 @@
 defmodule Pgpeek.AuthTest do
-  use Pgpeek.DataCase, async: true
+  use Pgpeek.DataCase, async: false
 
   alias Pgpeek.Auth
   alias Pgpeek.Schemas.User

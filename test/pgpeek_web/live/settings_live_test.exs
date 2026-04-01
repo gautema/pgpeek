@@ -67,4 +67,36 @@ defmodule PgpeekWeb.SettingsLiveTest do
     # The delete button should not appear for the current user
     refute has_element?(view, "button[phx-value-id='#{user.id}']")
   end
+
+  test "shows LLM configuration form", %{conn: conn} do
+    {:ok, view, _html} = live(conn, "/settings")
+    assert has_element?(view, "#llm-form")
+    assert has_element?(view, "h2", "AI Query Explanations")
+  end
+
+  test "can save LLM model", %{conn: conn} do
+    {:ok, view, _html} = live(conn, "/settings")
+
+    view
+    |> form("#llm-form", %{llm: %{model: "openai:gpt-4o-mini", api_key: "sk-test"}})
+    |> render_submit()
+
+    assert has_element?(view, "div", "LLM configuration saved")
+    assert Pgpeek.Settings.get("llm_model") == "openai:gpt-4o-mini"
+    assert Pgpeek.Settings.get("llm_api_key") == "sk-test"
+  end
+
+  test "can clear LLM configuration", %{conn: conn} do
+    Pgpeek.Settings.put("llm_model", "anthropic:claude-haiku-4-5")
+    Pgpeek.Settings.put("llm_api_key", "sk-ant-test")
+
+    {:ok, view, _html} = live(conn, "/settings")
+
+    view
+    |> form("#llm-form", %{llm: %{model: "", api_key: ""}})
+    |> render_submit()
+
+    assert has_element?(view, "div", "LLM configuration cleared")
+    assert Pgpeek.Settings.get("llm_model") == nil
+  end
 end

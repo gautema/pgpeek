@@ -3,9 +3,9 @@ defmodule Pgpeek.QueryExplainer do
   Uses an LLM to explain SQL queries in plain English and suggest optimizations.
   Supports any provider via req_llm (OpenAI, Anthropic, Ollama, etc).
 
-  Configure via environment variables:
-    LLM_MODEL=anthropic:claude-haiku-4-5   (provider:model format)
-    ANTHROPIC_API_KEY=sk-ant-...           (or OPENAI_API_KEY, etc)
+  Configuration priority:
+    1. Settings in SQLite (configured via UI at /settings)
+    2. LLM_MODEL environment variable
   """
 
   @system_prompt """
@@ -34,12 +34,13 @@ defmodule Pgpeek.QueryExplainer do
   Returns `{:ok, explanation}` or `{:error, reason}`.
   """
   def explain(query_text) when is_binary(query_text) do
-    model = model()
+    case config() do
+      {:ok, model, api_key} ->
+        if api_key, do: set_api_key(model, api_key)
+        do_explain(model, query_text)
 
-    if model do
-      do_explain(model, query_text)
-    else
-      {:error, :not_configured}
+      :not_configured ->
+        {:error, :not_configured}
     end
   end
 
@@ -47,11 +48,56 @@ defmodule Pgpeek.QueryExplainer do
 
   @doc "Check if an LLM is configured."
   def configured? do
-    model() != nil
+    config() != :not_configured
   end
 
-  defp model do
-    Application.get_env(:pgpeek, :llm_model)
+  @doc "Test the LLM connection with a simple prompt."
+  def test_connection(model, api_key) do
+    if api_key && api_key != "", do: set_api_key(model, api_key)
+
+    context =
+      ReqLLM.Context.new([
+        ReqLLM.Context.user("Reply with exactly: OK")
+      ])
+
+    case ReqLLM.generate_text(model, context, max_tokens: 10, temperature: 0) do
+      {:ok, _response} -> :ok
+      {:error, reason} -> {:error, format_error(reason)}
+    end
+  end
+
+  defp config do
+    # Priority: SQLite settings > env var
+    db_model = Pgpeek.Settings.get("llm_model")
+    db_api_key = Pgpeek.Settings.get("llm_api_key")
+    env_model = Application.get_env(:pgpeek, :llm_model)
+
+    cond do
+      db_model && db_model != "" -> {:ok, db_model, db_api_key}
+      env_model -> {:ok, env_model, nil}
+      true -> :not_configured
+    end
+  end
+
+  defp set_api_key(model, api_key) do
+    provider =
+      case String.split(model, ":", parts: 2) do
+        [p, _] -> p
+        _ -> nil
+      end
+
+    key_name =
+      case provider do
+        "anthropic" -> :anthropic_api_key
+        "openai" -> :openai_api_key
+        "google" -> :google_api_key
+        "groq" -> :groq_api_key
+        "xai" -> :xai_api_key
+        "mistral" -> :mistral_api_key
+        _ -> nil
+      end
+
+    if key_name, do: ReqLLM.put_key(key_name, api_key)
   end
 
   defp do_explain(model, query_text) do
