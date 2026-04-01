@@ -69,17 +69,7 @@ defmodule PgpeekWeb.QueryDetailLive do
   end
 
   defp get_query_text(query_id) do
-    snapshot = Snapshots.get_latest_snapshot()
-
-    if snapshot do
-      import Ecto.Query
-
-      Pgpeek.Schemas.QueryStat
-      |> where(snapshot_id: ^snapshot.id, query_id: ^query_id)
-      |> select([q], q.query_text)
-      |> limit(1)
-      |> Pgpeek.Repo.one()
-    end
+    Snapshots.get_query_text(query_id)
   end
 
   @impl true

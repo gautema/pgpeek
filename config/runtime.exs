@@ -22,6 +22,11 @@ if interval = System.get_env("SNAPSHOT_INTERVAL") do
   config :pgpeek, :snapshot_interval, String.to_integer(interval) * 1_000
 end
 
+# Retention period in days (default: 7)
+if retention = System.get_env("RETENTION_DAYS") do
+  config :pgpeek, :retention_days, String.to_integer(retention)
+end
+
 # SQLite database path override (useful for Docker volumes)
 if data_dir = System.get_env("DATA_DIR") do
   config :pgpeek, Pgpeek.Repo,

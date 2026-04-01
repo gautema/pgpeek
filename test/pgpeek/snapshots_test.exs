@@ -411,4 +411,66 @@ defmodule Pgpeek.SnapshotsTest do
       assert Snapshots.detect_regressions(current_stats) == []
     end
   end
+
+  describe "cleanup_old_snapshots/1" do
+    test "deletes snapshots older than retention period" do
+      old = create_snapshot(%{captured_at: DateTime.add(DateTime.utc_now(), -10, :day) |> DateTime.truncate(:second)})
+      recent = create_snapshot(%{captured_at: DateTime.utc_now() |> DateTime.truncate(:second)})
+
+      deleted = Snapshots.cleanup_old_snapshots(7)
+      assert deleted == 1
+
+      assert Repo.get(Pgpeek.Schemas.Snapshot, recent.id)
+      refute Repo.get(Pgpeek.Schemas.Snapshot, old.id)
+    end
+
+    test "returns 0 when nothing to delete" do
+      create_snapshot(%{captured_at: DateTime.utc_now() |> DateTime.truncate(:second)})
+      assert Snapshots.cleanup_old_snapshots(7) == 0
+    end
+  end
+
+  describe "get_query_text/1" do
+    test "returns text from query_texts table" do
+      Repo.insert!(%Pgpeek.Schemas.QueryText{
+        query_id: "qt1",
+        query_text: "SELECT * FROM users",
+        first_seen_at: DateTime.utc_now() |> DateTime.truncate(:second)
+      })
+
+      assert Snapshots.get_query_text("qt1") == "SELECT * FROM users"
+    end
+
+    test "falls back to query_stats for older data" do
+      snapshot = create_snapshot()
+      insert_stats(snapshot.id, [%{query_id: "qs1", query_text: "SELECT 1"}])
+
+      assert Snapshots.get_query_text("qs1") == "SELECT 1"
+    end
+
+    test "returns nil for unknown query" do
+      assert Snapshots.get_query_text("nonexistent") == nil
+    end
+  end
+
+  describe "insert_query_stats/2 stores query texts separately" do
+    test "upserts into query_texts table" do
+      snapshot = create_snapshot()
+
+      rows = [
+        %{
+          "queryid" => 999, "query" => "SELECT * FROM orders",
+          "calls" => 10, "mean_exec_time" => 1.0, "total_exec_time" => 10.0,
+          "min_exec_time" => 0.5, "max_exec_time" => 2.0, "stddev_exec_time" => 0.3,
+          "rows" => 10, "shared_blks_hit" => 5, "shared_blks_read" => 1
+        }
+      ]
+
+      Snapshots.insert_query_stats(snapshot.id, rows)
+
+      qt = Repo.get_by(Pgpeek.Schemas.QueryText, query_id: "999")
+      assert qt
+      assert qt.query_text == "SELECT * FROM orders"
+    end
+  end
 end

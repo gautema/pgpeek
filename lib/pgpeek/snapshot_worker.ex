@@ -89,6 +89,14 @@ defmodule Pgpeek.SnapshotWorker do
 
       Logger.info("PgPeek: Snapshot #{snapshot.id} captured (#{length(rows)} queries)")
 
+      # Retention cleanup — default 7 days
+      retention_days = Application.get_env(:pgpeek, :retention_days, 7)
+      deleted = Pgpeek.Snapshots.cleanup_old_snapshots(retention_days)
+
+      if deleted > 0 do
+        Logger.info("PgPeek: Cleaned up #{deleted} old snapshots (retention: #{retention_days} days)")
+      end
+
       %{state | last_stats_reset: stats_reset_at}
     else
       {:error, error} ->

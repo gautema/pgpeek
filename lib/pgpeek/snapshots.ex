@@ -2,7 +2,7 @@ defmodule Pgpeek.Snapshots do
   @moduledoc "Context module for snapshot queries."
 
   alias Pgpeek.Repo
-  alias Pgpeek.Schemas.{Snapshot, QueryStat}
+  alias Pgpeek.Schemas.{Snapshot, QueryStat, QueryText}
 
   import Ecto.Query
 
@@ -35,6 +35,8 @@ defmodule Pgpeek.Snapshots do
   end
 
   def insert_query_stats(snapshot_id, stats_rows) do
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+
     # pg_stat_statements can have multiple rows per queryid
     # (different users, databases, or toplevel flags).
     # Aggregate them into a single row per queryid.
@@ -60,7 +62,6 @@ defmodule Pgpeek.Snapshots do
         }
       end)
       |> Enum.map(fn entry ->
-        # Compute mean from aggregated totals
         mean =
           if entry.calls > 0,
             do: entry.total_exec_time / entry.calls,
@@ -69,14 +70,63 @@ defmodule Pgpeek.Snapshots do
         %{entry | mean_exec_time: mean}
       end)
 
-    # Insert in batches to avoid SQLite limits
+    # Upsert query texts (stored once, not per snapshot)
     entries
+    |> Enum.filter(& &1.query_text)
+    |> Enum.uniq_by(& &1.query_id)
+    |> Enum.chunk_every(50)
+    |> Enum.each(fn batch ->
+      Repo.insert_all(
+        QueryText,
+        Enum.map(batch, fn e ->
+          %{query_id: e.query_id, query_text: e.query_text, first_seen_at: now}
+        end),
+        on_conflict: {:replace, [:query_text]},
+        conflict_target: :query_id
+      )
+    end)
+
+    # Insert stats WITHOUT query_text (it's in the query_texts table now)
+    entries
+    |> Enum.map(&Map.delete(&1, :query_text))
     |> Enum.chunk_every(100)
     |> Enum.each(fn batch ->
       Repo.insert_all(QueryStat, batch)
     end)
 
     :ok
+  end
+
+  @doc "Get query text from the deduplicated query_texts table, falling back to query_stats."
+  def get_query_text(query_id) do
+    case Repo.get_by(QueryText, query_id: query_id) do
+      %QueryText{query_text: text} when not is_nil(text) -> text
+      _ ->
+        # Fallback: check query_stats for older data that still has query_text
+        QueryStat
+        |> where(query_id: ^query_id)
+        |> where([qs], not is_nil(qs.query_text))
+        |> select([qs], qs.query_text)
+        |> limit(1)
+        |> Repo.one()
+    end
+  end
+
+  @doc "Enrich query stats with their query text from the query_texts table."
+  def with_query_text(stats) when is_list(stats) do
+    query_ids = Enum.map(stats, & &1.query_id) |> Enum.uniq()
+
+    texts =
+      QueryText
+      |> where([qt], qt.query_id in ^query_ids)
+      |> select([qt], {qt.query_id, qt.query_text})
+      |> Repo.all()
+      |> Map.new()
+
+    Enum.map(stats, fn stat ->
+      text = Map.get(texts, stat.query_id) || stat.query_text
+      %{stat | query_text: text}
+    end)
   end
 
   defp sum_floats(vals), do: Enum.reduce(vals, 0.0, &((&1 || 0.0) + &2))
@@ -89,12 +139,14 @@ defmodule Pgpeek.Snapshots do
     |> order_by(desc: :total_exec_time)
     |> limit(^limit)
     |> Repo.all()
+    |> with_query_text()
   end
 
   def query_stats_for_snapshot(snapshot_id) do
     QueryStat
     |> where(snapshot_id: ^snapshot_id)
     |> Repo.all()
+    |> with_query_text()
   end
 
   def query_history(query_id, limit \\ 100) do
@@ -177,5 +229,20 @@ defmodule Pgpeek.Snapshots do
       |> Repo.one()
 
     result || 0.0
+  end
+
+  @doc """
+  Delete snapshots (and their query_stats via cascade) older than the
+  given number of days. Returns the number of deleted snapshots.
+  """
+  def cleanup_old_snapshots(retention_days \\ 7) do
+    cutoff = DateTime.add(DateTime.utc_now(), -retention_days, :day)
+
+    {count, _} =
+      Snapshot
+      |> where([s], s.captured_at < ^cutoff)
+      |> Repo.delete_all()
+
+    count
   end
 end
