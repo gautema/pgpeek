@@ -45,6 +45,15 @@ defmodule Pgpeek.Diagnostics.Explain do
   # Use a prepared statement to avoid Postgrex interpreting $N as bind params.
   # Steps: PREPARE with param types -> EXPLAIN the prepared stmt -> DEALLOCATE
   defp do_explain(query_text, format_opt) do
+    # pg_stat_statements truncates long queries — these can't be explained
+    if String.ends_with?(String.trim(query_text), "...") do
+      {:error, "Query text is truncated by pg_stat_statements and cannot be explained. Increase track_activity_query_size in postgresql.conf."}
+    else
+      run_explain_sequence(query_text, format_opt)
+    end
+  end
+
+  defp run_explain_sequence(query_text, format_opt) do
     param_types = extract_param_types(query_text)
     type_list = if param_types == "", do: "", else: "(#{param_types})"
     plan_name = "pgpeek_explain_#{:erlang.unique_integer([:positive])}"
@@ -53,27 +62,32 @@ defmodule Pgpeek.Diagnostics.Explain do
     explain_sql = "EXPLAIN (GENERIC_PLAN, #{format_opt}) EXECUTE #{plan_name}"
     deallocate_sql = "DEALLOCATE #{plan_name}"
 
-    with {:ok, _} <- ProbeRepo.query(prepare_sql),
-         {:ok, result} <- ProbeRepo.query(explain_sql) do
-      # Best-effort deallocate, don't fail if it errors
-      ProbeRepo.query(deallocate_sql)
-
-      plan =
-        result.rows
-        |> Enum.map(fn [line] -> line end)
-        |> Enum.join("\n")
-
-      {:ok, plan}
-    else
-      {:error, %Postgrex.Error{postgres: %{message: message}}} ->
+    case ProbeRepo.query(prepare_sql) do
+      {:ok, _} ->
+        result = ProbeRepo.query(explain_sql)
         ProbeRepo.query(deallocate_sql)
-        {:error, message}
 
-      {:error, reason} ->
-        ProbeRepo.query(deallocate_sql)
-        {:error, inspect(reason)}
+        case result do
+          {:ok, %Postgrex.Result{rows: rows}} ->
+            plan =
+              rows
+              |> Enum.map(fn [line] -> line end)
+              |> Enum.join("\n")
+
+            {:ok, plan}
+
+          {:error, error} ->
+            {:error, format_error(error)}
+        end
+
+      {:error, error} ->
+        # PREPARE failed — don't try to deallocate
+        {:error, format_error(error)}
     end
   end
+
+  defp format_error(%Postgrex.Error{postgres: %{message: message}}), do: message
+  defp format_error(reason), do: inspect(reason)
 
   # Extract the number of $N params and generate "unknown" types for each.
   # PREPARE needs type declarations for each parameter.
