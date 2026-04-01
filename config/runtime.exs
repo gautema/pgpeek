@@ -5,7 +5,7 @@ if System.get_env("PHX_SERVER") do
 end
 
 config :pgpeek, PgpeekWeb.Endpoint,
-  http: [port: String.to_integer(System.get_env("PORT", "4000"))]
+  http: [port: String.to_integer(System.get_env("PORT", "4444"))]
 
 # DATABASE_URL is the monitored Postgres database (read-only connection)
 if database_url = System.get_env("DATABASE_URL") do
