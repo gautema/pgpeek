@@ -57,6 +57,9 @@ defmodule Pgpeek.Diagnostics.Explain do
     end
   end
 
+  # Run PREPARE, EXPLAIN, DEALLOCATE on a single connection.
+  # Prepared statements are connection-local, so all three must
+  # execute on the same pooled connection.
   defp run_explain_sequence(query_text, format_opt) do
     param_types = extract_param_types(query_text)
     type_list = if param_types == "", do: "", else: "(#{param_types})"
@@ -66,26 +69,29 @@ defmodule Pgpeek.Diagnostics.Explain do
     explain_sql = "EXPLAIN (GENERIC_PLAN, #{format_opt}) EXECUTE #{plan_name}"
     deallocate_sql = "DEALLOCATE #{plan_name}"
 
-    case ProbeRepo.query(prepare_sql) do
-      {:ok, _} ->
-        result = ProbeRepo.query(explain_sql)
-        ProbeRepo.query(deallocate_sql)
+    case ProbeRepo.with_conn(fn conn ->
+      case Postgrex.query(conn, prepare_sql, []) do
+        {:ok, _} ->
+          result = Postgrex.query(conn, explain_sql, [])
+          Postgrex.query(conn, deallocate_sql, [])
+          result
 
-        case result do
-          {:ok, %Postgrex.Result{rows: rows}} ->
-            plan =
-              rows
-              |> Enum.map(fn [line] -> line end)
-              |> Enum.join("\n")
+        {:error, error} ->
+          {:error, error}
+      end
+    end) do
+      {:ok, {:ok, %Postgrex.Result{rows: rows}}} ->
+        plan =
+          rows
+          |> Enum.map(fn [line] -> line end)
+          |> Enum.join("\n")
 
-            {:ok, plan}
+        {:ok, plan}
 
-          {:error, error} ->
-            {:error, format_error(error)}
-        end
+      {:ok, {:error, error}} ->
+        {:error, format_error(error)}
 
       {:error, error} ->
-        # PREPARE failed — don't try to deallocate
         {:error, format_error(error)}
     end
   end

@@ -47,6 +47,17 @@ defmodule Pgpeek.ProbeRepo do
     Postgrex.query(__MODULE__, sql, params)
   end
 
+  @doc """
+  Run multiple queries on the same connection.
+  Useful for PREPARE/EXECUTE/DEALLOCATE sequences where statements
+  are connection-local.
+  """
+  def with_conn(fun) do
+    Postgrex.transaction(__MODULE__, fn conn ->
+      fun.(conn)
+    end)
+  end
+
   @doc "Check if we have a real Postgres connection configured."
   def configured? do
     config = Application.get_env(:pgpeek, __MODULE__, [])
