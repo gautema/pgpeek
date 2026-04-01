@@ -25,8 +25,8 @@ COPY lib lib
 COPY priv priv
 COPY assets assets
 
-RUN mix assets.deploy
 RUN mix compile
+RUN mix assets.deploy
 RUN mix release
 
 # Runtime stage
@@ -44,10 +44,7 @@ USER nobody
 
 VOLUME ["/data"]
 
-ENV DATABASE_URL=""
-ENV ADMIN_PASSWORD=""
 ENV PHX_HOST="localhost"
-ENV SECRET_KEY_BASE=""
 ENV PHX_SERVER=true
 ENV DATA_DIR=/data
 ENV PORT=4444
