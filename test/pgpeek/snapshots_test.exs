@@ -233,22 +233,57 @@ defmodule Pgpeek.SnapshotsTest do
   end
 
   describe "query_history/2" do
-    test "returns history for a specific query across snapshots" do
+    test "returns deltas between consecutive snapshots" do
       s1 = create_snapshot(%{captured_at: ~U[2024-01-01 10:00:00Z]})
       s2 = create_snapshot(%{captured_at: ~U[2024-01-01 11:00:00Z]})
+      s3 = create_snapshot(%{captured_at: ~U[2024-01-01 12:00:00Z]})
 
       insert_stats(s1.id, [
         %{query_id: "q1", calls: 10, mean_exec_time: 1.0, total_exec_time: 10.0, rows: 10}
       ])
 
       insert_stats(s2.id, [
-        %{query_id: "q1", calls: 20, mean_exec_time: 1.5, total_exec_time: 30.0, rows: 20}
+        %{query_id: "q1", calls: 30, mean_exec_time: 1.5, total_exec_time: 40.0, rows: 30}
+      ])
+
+      insert_stats(s3.id, [
+        %{query_id: "q1", calls: 50, mean_exec_time: 2.0, total_exec_time: 80.0, rows: 50}
       ])
 
       history = Snapshots.query_history("q1")
+      # 3 snapshots produce 2 deltas
       assert length(history) == 2
-      # Most recent first
-      assert hd(history).calls == 20
+      # Most recent delta first
+      latest = hd(history)
+      assert latest.delta_calls == 20
+      assert latest.delta_total_time == 40.0
+      assert latest.delta_rows == 20
+      # Cumulative values still available
+      assert latest.calls == 50
+    end
+
+    test "filters out zero-activity periods" do
+      s1 = create_snapshot(%{captured_at: ~U[2024-01-01 10:00:00Z]})
+      s2 = create_snapshot(%{captured_at: ~U[2024-01-01 11:00:00Z]})
+      s3 = create_snapshot(%{captured_at: ~U[2024-01-01 12:00:00Z]})
+
+      insert_stats(s1.id, [
+        %{query_id: "q1", calls: 10, total_exec_time: 10.0, rows: 10}
+      ])
+
+      # Same values = zero delta
+      insert_stats(s2.id, [
+        %{query_id: "q1", calls: 10, total_exec_time: 10.0, rows: 10}
+      ])
+
+      insert_stats(s3.id, [
+        %{query_id: "q1", calls: 20, total_exec_time: 30.0, rows: 20}
+      ])
+
+      history = Snapshots.query_history("q1")
+      # Only 1 non-zero delta (s2→s3)
+      assert length(history) == 1
+      assert hd(history).delta_calls == 10
     end
 
     test "returns empty list for unknown query" do

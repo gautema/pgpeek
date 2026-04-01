@@ -283,14 +283,14 @@ defmodule PgpeekWeb.QueryDetailLive do
           </div>
         <% end %>
 
-        <%!-- History Table --%>
+        <%!-- History Table (deltas) --%>
         <div class="glass-card overflow-hidden">
           <div class="flex items-center gap-2 px-6 py-4 border-b border-white/5">
             <.icon name="hero-chart-bar" class="size-5 text-slate-500" />
             <h2 class="text-base font-semibold text-white">
-              History
+              Activity per Period
               <span class="text-sm font-normal text-slate-500">
-                (last {length(@history)} snapshots)
+                (last {length(@history)} periods)
               </span>
             </h2>
           </div>
@@ -302,7 +302,7 @@ defmodule PgpeekWeb.QueryDetailLive do
                     Time
                   </th>
                   <th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-500">
-                    Mean Time
+                    Avg Time
                   </th>
                   <th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-500">
                     Total Time
@@ -330,16 +330,16 @@ defmodule PgpeekWeb.QueryDetailLive do
                       </div>
                     </td>
                     <td class="whitespace-nowrap px-4 py-3 text-right text-sm tabular-nums text-slate-300">
-                      {format_time(h.mean_exec_time)}
+                      {format_time(h.delta_mean_time)}
                     </td>
                     <td class="whitespace-nowrap px-4 py-3 text-right text-sm tabular-nums text-slate-400">
-                      {format_time(h.total_exec_time)}
+                      {format_time(h.delta_total_time)}
                     </td>
                     <td class="whitespace-nowrap px-4 py-3 text-right text-sm tabular-nums text-slate-400">
-                      {format_number(h.calls)}
+                      {format_number(h.delta_calls)}
                     </td>
                     <td class="whitespace-nowrap px-4 py-3 text-right text-sm tabular-nums text-slate-400">
-                      {format_number(h.rows)}
+                      {format_number(h.delta_rows)}
                     </td>
                   </tr>
                 <% end %>

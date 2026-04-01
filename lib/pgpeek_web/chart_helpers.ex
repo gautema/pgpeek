@@ -1,7 +1,7 @@
 defmodule PgpeekWeb.ChartHelpers do
   @moduledoc "Helpers for building Chart.js configurations from Elixir data."
 
-  @doc "Build a line chart config for query history (mean time + calls over time)."
+  @doc "Build a line chart config for query history deltas (avg time + calls per period)."
   def query_history_chart(history) do
     # History comes newest-first, reverse for chronological order
     points = Enum.reverse(history)
@@ -11,8 +11,8 @@ defmodule PgpeekWeb.ChartHelpers do
         Calendar.strftime(h.captured_at, "%m/%d %H:%M")
       end)
 
-    mean_times = Enum.map(points, fn h -> h.mean_exec_time end)
-    calls = Enum.map(points, fn h -> h.calls end)
+    mean_times = Enum.map(points, fn h -> h.delta_mean_time end)
+    calls = Enum.map(points, fn h -> h.delta_calls end)
 
     %{
       type: "line",
@@ -20,7 +20,7 @@ defmodule PgpeekWeb.ChartHelpers do
         labels: labels,
         datasets: [
           %{
-            label: "Mean Time (ms)",
+            label: "Avg Time per Call (ms)",
             data: mean_times,
             borderColor: "rgb(96, 165, 250)",
             backgroundColor: "rgba(96, 165, 250, 0.1)",
@@ -32,7 +32,7 @@ defmodule PgpeekWeb.ChartHelpers do
             yAxisID: "y"
           },
           %{
-            label: "Calls",
+            label: "Calls per Period",
             data: calls,
             borderColor: "rgb(167, 139, 250)",
             backgroundColor: "rgba(167, 139, 250, 0.05)",

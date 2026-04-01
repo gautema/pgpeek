@@ -177,20 +177,57 @@ defmodule Pgpeek.Snapshots do
     |> with_query_text()
   end
 
+  @doc """
+  Get query history as deltas between consecutive snapshots.
+  Each row shows the change in calls, time, and rows since the previous snapshot.
+  Returns newest first. Skips periods where stats were reset (negative deltas).
+  """
   def query_history(query_id, limit \\ 100) do
-    QueryStat
-    |> join(:inner, [qs], s in Snapshot, on: qs.snapshot_id == s.id)
-    |> where([qs], qs.query_id == ^query_id)
-    |> order_by([qs, s], desc: s.captured_at)
-    |> limit(^limit)
-    |> select([qs, s], %{
-      captured_at: s.captured_at,
-      calls: qs.calls,
-      mean_exec_time: qs.mean_exec_time,
-      total_exec_time: qs.total_exec_time,
-      rows: qs.rows
-    })
-    |> Repo.all()
+    raw =
+      QueryStat
+      |> join(:inner, [qs], s in Snapshot, on: qs.snapshot_id == s.id)
+      |> where([qs], qs.query_id == ^query_id)
+      |> order_by([qs, s], desc: s.captured_at)
+      |> limit(^(limit + 1))
+      |> select([qs, s], %{
+        captured_at: s.captured_at,
+        calls: qs.calls,
+        mean_exec_time: qs.mean_exec_time,
+        total_exec_time: qs.total_exec_time,
+        rows: qs.rows
+      })
+      |> Repo.all()
+
+    # Compute deltas: each row compared to the next (which is older since sorted desc)
+    raw
+    |> Enum.chunk_every(2, 1, :discard)
+    |> Enum.map(fn [current, previous] ->
+      delta_calls = (current.calls || 0) - (previous.calls || 0)
+      delta_total = (current.total_exec_time || 0) - (previous.total_exec_time || 0)
+      delta_rows = (current.rows || 0) - (previous.rows || 0)
+
+      delta_mean =
+        if delta_calls > 0, do: delta_total / delta_calls, else: 0.0
+
+      %{
+        captured_at: current.captured_at,
+        delta_calls: delta_calls,
+        delta_total_time: delta_total,
+        delta_mean_time: delta_mean,
+        delta_rows: delta_rows,
+        # Keep cumulative for the "latest" stat cards
+        calls: current.calls,
+        mean_exec_time: current.mean_exec_time,
+        total_exec_time: current.total_exec_time,
+        rows: current.rows
+      }
+    end)
+    |> Enum.reject(fn d ->
+      # Skip stats resets (negative deltas) and idle periods (all zeros)
+      d.delta_calls < 0 or d.delta_total_time < 0 or
+        (d.delta_calls == 0 and d.delta_total_time == 0.0)
+    end)
+    |> Enum.take(limit)
   end
 
   @doc "Compute deltas between two snapshots for a given query."

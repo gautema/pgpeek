@@ -60,7 +60,7 @@ defmodule PgpeekWeb.QueryDetailLiveTest do
     create_query_with_history()
 
     {:ok, view, _html} = live(conn, "/queries/q1")
-    assert has_element?(view, "h2", "History (last 2 snapshots)")
+    assert has_element?(view, "h2", "Activity per Period")
   end
 
   test "shows current stats", %{conn: conn} do
