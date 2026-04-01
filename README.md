@@ -66,6 +66,7 @@ mix phx.server
 | `SECRET_KEY_BASE` | _(required in prod)_ | Phoenix secret for signing cookies. Generate with `mix phx.gen.secret` |
 | `PORT` | `4444` | HTTP port |
 | `PHX_HOST` | `localhost` | Hostname for URL generation |
+| `PHX_SCHEME` | `https` | URL scheme (`http` if behind a reverse proxy handling TLS) |
 | `SNAPSHOT_INTERVAL` | `300` | Seconds between snapshots (default: 5 minutes) |
 | `RETENTION_DAYS` | `7` | Days to keep snapshot history before auto-cleanup |
 | `DATA_DIR` | `./data` | SQLite database directory (mount as Docker volume) |

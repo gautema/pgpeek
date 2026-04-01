@@ -48,11 +48,20 @@ if config_env() == :prod do
       """
 
   host = System.get_env("PHX_HOST") || "localhost"
+  scheme = System.get_env("PHX_SCHEME", "https")
+
+  url_port =
+    if scheme == "https", do: 443, else: String.to_integer(System.get_env("PORT", "4444"))
 
   config :pgpeek, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
   config :pgpeek, PgpeekWeb.Endpoint,
-    url: [host: host, port: 443, scheme: "https"],
+    url: [host: host, port: url_port, scheme: scheme],
     http: [ip: {0, 0, 0, 0, 0, 0, 0, 0}],
     secret_key_base: secret_key_base
+
+  # Disable force_ssl when running behind a reverse proxy on HTTP
+  if scheme == "http" do
+    config :pgpeek, PgpeekWeb.Endpoint, force_ssl: false
+  end
 end
