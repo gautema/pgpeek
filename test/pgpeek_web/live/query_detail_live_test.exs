@@ -83,4 +83,16 @@ defmodule PgpeekWeb.QueryDetailLiveTest do
     {:ok, view, _html} = live(conn, "/queries/unknown")
     assert has_element?(view, "div", "No history for this query yet.")
   end
+
+  test "shows explain plan button when query text exists", %{conn: conn} do
+    create_query_with_history()
+
+    {:ok, view, _html} = live(conn, "/queries/q1")
+    assert has_element?(view, "button", "Explain Plan")
+  end
+
+  test "does not show explain button for unknown query", %{conn: conn} do
+    {:ok, view, _html} = live(conn, "/queries/unknown")
+    refute has_element?(view, "button", "Explain Plan")
+  end
 end

@@ -1,7 +1,7 @@
 defmodule Pgpeek.Diagnostics do
   @moduledoc "Facade for all diagnostic queries against the monitored database."
 
-  alias Pgpeek.Diagnostics.{Health, Indexes, Tables, Queries, Connections, System}
+  alias Pgpeek.Diagnostics.{Health, Indexes, Tables, Queries, Connections, System, Explain}
 
   # Health
   defdelegate cache_hit_ratio, to: Health
@@ -42,4 +42,8 @@ defmodule Pgpeek.Diagnostics do
   defdelegate extensions, to: System
   defdelegate database_size, to: System
   defdelegate missing_fk_constraints, to: System
+
+  # Explain
+  defdelegate explain(query_text), to: Explain
+  defdelegate explain_json(query_text), to: Explain
 end

@@ -2,6 +2,7 @@ defmodule PgpeekWeb.QueryDetailLive do
   use PgpeekWeb, :live_view
 
   alias Pgpeek.Snapshots
+  alias Pgpeek.Diagnostics
 
   @impl true
   def mount(%{"query_id" => query_id}, _session, socket) do
@@ -13,6 +14,9 @@ defmodule PgpeekWeb.QueryDetailLive do
       socket
       |> assign(:page_title, "Query Detail")
       |> assign(:query_id, query_id)
+      |> assign(:explain_plan, nil)
+      |> assign(:explain_loading, false)
+      |> assign(:explain_error, nil)
       |> load_query_data()
 
     {:ok, socket}
@@ -21,6 +25,22 @@ defmodule PgpeekWeb.QueryDetailLive do
   @impl true
   def handle_info({:new_snapshot, _id}, socket) do
     {:noreply, load_query_data(socket)}
+  end
+
+  def handle_info(:run_explain, socket) do
+    {plan, error} =
+      case Diagnostics.explain(socket.assigns.query_text) do
+        {:ok, plan} -> {plan, nil}
+        {:error, msg} -> {nil, to_string(msg)}
+      end
+
+    socket =
+      socket
+      |> assign(:explain_plan, plan)
+      |> assign(:explain_error, error)
+      |> assign(:explain_loading, false)
+
+    {:noreply, socket}
   end
 
   defp load_query_data(socket) do
@@ -74,14 +94,66 @@ defmodule PgpeekWeb.QueryDetailLive do
 
         <%!-- Query Text --%>
         <div class="glass-card overflow-hidden">
-          <div class="flex items-center gap-2 px-6 py-3 border-b border-white/5">
-            <.icon name="hero-code-bracket" class="size-4 text-slate-500" />
-            <h2 class="text-xs font-medium uppercase tracking-wider text-slate-500">Query Text</h2>
+          <div class="flex items-center justify-between px-6 py-3 border-b border-white/5">
+            <div class="flex items-center gap-2">
+              <.icon name="hero-code-bracket" class="size-4 text-slate-500" />
+              <h2 class="text-xs font-medium uppercase tracking-wider text-slate-500">Query Text</h2>
+            </div>
+            <%= if @query_text do %>
+              <button
+                phx-click="explain"
+                disabled={@explain_loading}
+                class={[
+                  "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
+                  if(@explain_loading,
+                    do: "bg-white/5 text-slate-500 cursor-wait",
+                    else: "bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 cursor-pointer"
+                  )
+                ]}
+              >
+                <%= if @explain_loading do %>
+                  <.icon name="hero-arrow-path" class="size-3.5 animate-spin" />
+                  Running...
+                <% else %>
+                  <.icon name="hero-play" class="size-3.5" />
+                  Explain Plan
+                <% end %>
+              </button>
+            <% end %>
           </div>
           <div class="p-6">
             <pre class="overflow-x-auto text-sm font-mono text-slate-300 leading-relaxed whitespace-pre-wrap"><%= @query_text || "(not available)" %></pre>
           </div>
         </div>
+
+        <%!-- Explain Plan --%>
+        <%= if @explain_plan || @explain_error do %>
+          <div class="glass-card overflow-hidden">
+            <div class="flex items-center gap-2 px-6 py-3 border-b border-white/5">
+              <.icon name="hero-map" class="size-4 text-slate-500" />
+              <h2 class="text-xs font-medium uppercase tracking-wider text-slate-500">Execution Plan</h2>
+              <span class="text-xs text-slate-600">(GENERIC_PLAN)</span>
+            </div>
+            <%= if @explain_error do %>
+              <div class="p-6">
+                <div class="flex items-start gap-3">
+                  <.icon name="hero-x-circle" class="size-5 text-red-400 shrink-0 mt-0.5" />
+                  <div>
+                    <p class="text-sm text-red-400"><%= @explain_error %></p>
+                    <p class="text-xs text-slate-500 mt-1">
+                      EXPLAIN (GENERIC_PLAN) requires PostgreSQL 16+.
+                      Some queries (DDL, utility commands) cannot be explained.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            <% else %>
+              <div class="p-6">
+                <pre class="overflow-x-auto text-sm font-mono text-slate-300 leading-relaxed whitespace-pre-wrap"><%= @explain_plan %></pre>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
 
         <%!-- Stat Cards --%>
         <%= if @latest do %>
