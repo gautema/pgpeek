@@ -88,7 +88,8 @@ defmodule PgpeekWeb.ChartHelpers do
 
   @doc "Build a dashboard overview chart with total time across snapshots."
   def dashboard_trend_chart(snapshot_data) do
-    points = Enum.reverse(snapshot_data)
+    # Data already comes in chronological order (oldest first)
+    points = snapshot_data
 
     labels = Enum.map(points, fn {time, _val} -> Calendar.strftime(time, "%H:%M") end)
     values = Enum.map(points, fn {_time, val} -> val end)

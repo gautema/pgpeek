@@ -68,7 +68,7 @@ defmodule PgpeekWeb.DashboardLive do
 
     {db_stats, connections} = load_pg_stats()
 
-    trend = Snapshots.snapshot_trend(30)
+    trend = Snapshots.snapshot_trend(288)
 
     dashboard_chart =
       if length(trend) >= 2 do
