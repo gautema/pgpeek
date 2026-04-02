@@ -23,7 +23,15 @@ defmodule Pgpeek.SystemStats do
       |> Map.merge(collect_tx_wraparound())
       |> Map.merge(collect_database_size())
 
-    Repo.insert_all(SystemStat, [stats])
+    # Coerce Decimals to integers/floats for Ecto
+    clean_stats =
+      Map.new(stats, fn
+        {k, %Decimal{} = v} when k == :cache_hit_ratio -> {k, Decimal.to_float(v)}
+        {k, %Decimal{} = v} -> {k, Decimal.to_integer(v)}
+        pair -> pair
+      end)
+
+    Repo.insert_all(SystemStat, [clean_stats])
     :ok
   end
 

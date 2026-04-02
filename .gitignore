@@ -35,6 +35,9 @@ pgpeek-*.tar
 npm-debug.log
 /assets/node_modules/
 
+# macOS
+.DS_Store
+
 # SQLite database files
 /data/*.db
 /data/*.db-*
