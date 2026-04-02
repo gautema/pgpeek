@@ -51,8 +51,8 @@ volumes:
 ### From source
 
 ```bash
-export DATABASE_URL=postgres://readonly_user:pass@localhost:5432/mydb
-export ADMIN_PASSWORD=changeme
+export PGPEEK_DATABASE_URL=postgres://readonly_user:pass@localhost:5432/mydb
+export PGPEEK_ADMIN_PASSWORD=changeme
 mix setup
 mix phx.server
 ```
