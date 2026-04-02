@@ -4,6 +4,12 @@ A self-hosted Postgres performance dashboard. Connects to your database read-onl
 
 **Zero footprint** on the monitored database — never creates tables, never writes, never resets stats.
 
+![Dashboard](docs/dashboard.png)
+
+![Query Details](docs/query_details.png)
+
+![Diagnostics](docs/diagnose.png)
+
 ## Features
 
 - **Dashboard** — cache hit ratio, connections, top queries by total time, delta tracking between snapshots
