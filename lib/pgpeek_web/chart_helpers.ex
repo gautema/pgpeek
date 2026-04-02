@@ -116,6 +116,77 @@ defmodule PgpeekWeb.ChartHelpers do
     }
   end
 
+  @doc "Build multiple small system stat charts from trend data."
+  def system_charts(trend) when length(trend) < 2, do: []
+
+  def system_charts(trend) do
+    labels = Enum.map(trend, fn t -> Calendar.strftime(t.captured_at, "%H:%M") end)
+
+    charts = [
+      build_system_chart("Connections", labels, trend, [
+        dataset("Active", & &1.active_connections, "rgb(96, 165, 250)"),
+        dataset("Idle in TX", & &1.idle_in_transaction, "rgb(251, 191, 36)")
+      ]),
+      build_system_chart("Cache Hit %", labels, trend, [
+        dataset("Hit Ratio", & &1.cache_hit_ratio, "rgb(52, 211, 153)")
+      ]),
+      build_system_chart("Replication Lag", labels, trend, [
+        dataset("Bytes", & &1.replication_lag_bytes, "rgb(244, 114, 182)")
+      ]),
+      build_system_chart("TX Wraparound Age", labels, trend, [
+        dataset("Age", & &1.tx_wraparound_age, "rgb(251, 146, 60)")
+      ]),
+      build_system_chart("Temp Bytes", labels, trend, [
+        dataset("Bytes", & &1.temp_bytes, "rgb(167, 139, 250)")
+      ]),
+      build_system_chart("Database Size", labels, trend, [
+        dataset(
+          "Bytes",
+          fn t -> (t.database_size_bytes || 0) / 1_048_576.0 end,
+          "rgb(45, 212, 191)"
+        )
+      ])
+    ]
+
+    # Only include charts that have non-nil data
+    Enum.filter(charts, fn {_title, config} ->
+      config.data.datasets
+      |> Enum.any?(fn ds -> Enum.any?(ds.data, &(not is_nil(&1) and &1 != 0)) end)
+    end)
+  end
+
+  defp build_system_chart(title, labels, trend, datasets) do
+    {title,
+     %{
+       type: "line",
+       data: %{
+         labels: labels,
+         datasets:
+           Enum.map(datasets, fn {label, extractor, color} ->
+             bg =
+               color
+               |> String.replace("rgb(", "rgba(")
+               |> String.replace(")", ", 0.08)")
+
+             %{
+               label: label,
+               data: Enum.map(trend, extractor),
+               borderColor: color,
+               backgroundColor: bg,
+               borderWidth: 1.5,
+               pointRadius: 0,
+               pointHitRadius: 8,
+               fill: true,
+               tension: 0.3
+             }
+           end)
+       },
+       options: chart_options_single("")
+     }}
+  end
+
+  defp dataset(label, extractor, color), do: {label, extractor, color}
+
   defp chart_options_dual_axis(y_unit, y1_unit) do
     %{
       responsive: true,

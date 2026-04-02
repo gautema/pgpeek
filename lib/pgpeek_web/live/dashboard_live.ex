@@ -69,6 +69,7 @@ defmodule PgpeekWeb.DashboardLive do
     {db_stats, connections} = load_pg_stats()
 
     trend = Snapshots.snapshot_trend(288)
+    sys_trend = Pgpeek.SystemStats.trend(288) |> Enum.reverse()
 
     dashboard_chart =
       if length(trend) >= 2 do
@@ -76,12 +77,15 @@ defmodule PgpeekWeb.DashboardLive do
         ChartHelpers.dashboard_trend_chart(data)
       end
 
+    system_charts = ChartHelpers.system_charts(sys_trend)
+
     socket
     |> assign(:snapshot, snapshot)
     |> assign(:top_queries, top_queries)
     |> assign(:deltas, deltas)
     |> assign(:n_plus_ones, n_plus_ones)
     |> assign(:regressions, regressions)
+    |> assign(:system_charts, system_charts)
     |> assign(:db_stats, db_stats)
     |> assign(:connections, connections)
     |> assign(:configured, ProbeRepo.configured?())
@@ -204,6 +208,32 @@ defmodule PgpeekWeb.DashboardLive do
                   </canvas>
                 </div>
               </div>
+            </div>
+          <% end %>
+
+          <%!-- System Stats Charts --%>
+          <%= if @system_charts != [] do %>
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <%= for {title, config} <- @system_charts do %>
+                <div class="glass-card overflow-hidden">
+                  <div class="px-4 py-3 border-b border-white/5">
+                    <h3 class="text-xs font-medium uppercase tracking-wider text-slate-500">
+                      {title}
+                    </h3>
+                  </div>
+                  <div class="p-4">
+                    <div style="height: 120px;">
+                      <canvas
+                        id={"sys-chart-#{String.replace(title, " ", "-") |> String.downcase()}"}
+                        phx-hook="ChartHook"
+                        phx-update="ignore"
+                        data-chart={Jason.encode!(config)}
+                      >
+                      </canvas>
+                    </div>
+                  </div>
+                </div>
+              <% end %>
             </div>
           <% end %>
 
