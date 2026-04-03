@@ -33,18 +33,20 @@ defmodule Pgpeek.QueryExplainer do
   Explain a query using the configured LLM.
   Returns `{:ok, explanation}` or `{:error, reason}`.
   """
-  def explain(query_text) when is_binary(query_text) do
+  def explain(query_text, opts \\ [])
+
+  def explain(query_text, opts) when is_binary(query_text) do
     case config() do
       {:ok, model, api_key} ->
         if api_key, do: set_api_key(model, api_key)
-        do_explain(model, query_text)
+        do_explain(model, query_text, opts)
 
       :not_configured ->
         {:error, :not_configured}
     end
   end
 
-  def explain(nil), do: {:error, "No query text available"}
+  def explain(nil, _opts), do: {:error, "No query text available"}
 
   @doc """
   Get AI advice on diagnostic results.
@@ -165,11 +167,18 @@ defmodule Pgpeek.QueryExplainer do
     end
   end
 
-  defp do_explain(model, query_text) do
+  defp do_explain(model, query_text, opts) do
+    plan = Keyword.get(opts, :explain_plan)
+    stats = Keyword.get(opts, :stats)
+
+    extra_context = build_extra_context(plan, stats)
+
     context =
       ReqLLM.Context.new([
         ReqLLM.Context.system(@system_prompt),
-        ReqLLM.Context.user("Explain this PostgreSQL query:\n\n```sql\n#{query_text}\n```")
+        ReqLLM.Context.user(
+          "Explain this PostgreSQL query:\n\n```sql\n#{query_text}\n```#{extra_context}"
+        )
       ])
 
     case ReqLLM.generate_text(model, context, max_tokens: 1000, temperature: 0.3) do
@@ -179,6 +188,30 @@ defmodule Pgpeek.QueryExplainer do
       {:error, reason} ->
         {:error, format_error(reason)}
     end
+  end
+
+  defp build_extra_context(plan, stats) do
+    parts = []
+
+    parts =
+      if plan do
+        ["\n\n**Execution plan (GENERIC_PLAN):**\n```\n#{plan}\n```" | parts]
+      else
+        parts
+      end
+
+    parts =
+      if stats do
+        summary =
+          "Mean time: #{stats.mean_exec_time}ms, Total time: #{stats.total_exec_time}ms, " <>
+            "Calls: #{stats.calls}, Rows: #{stats.rows}"
+
+        ["\n\n**Current stats:** #{summary}" | parts]
+      else
+        parts
+      end
+
+    parts |> Enum.reverse() |> Enum.join("")
   end
 
   defp extract_content(%{message: %{content: content}}) when is_binary(content), do: content

@@ -47,7 +47,11 @@ defmodule PgpeekWeb.QueryDetailLive do
 
   def handle_info(:run_ai_explain, socket) do
     {explanation, error} =
-      case Pgpeek.QueryExplainer.explain(socket.assigns.query_text) do
+      case Pgpeek.QueryExplainer.explain(
+             socket.assigns.query_text,
+             explain_plan: socket.assigns.explain_plan,
+             stats: socket.assigns.latest
+           ) do
         {:ok, text} -> {text, nil}
         {:error, msg} -> {nil, to_string(msg)}
       end
