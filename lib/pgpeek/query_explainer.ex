@@ -181,7 +181,7 @@ defmodule Pgpeek.QueryExplainer do
         )
       ])
 
-    case ReqLLM.generate_text(model, context, max_tokens: 1000, temperature: 0.3) do
+    case ReqLLM.generate_text(model, context, max_tokens: 8000, temperature: 0.3) do
       {:ok, response} ->
         {:ok, extract_content(response)}
 
