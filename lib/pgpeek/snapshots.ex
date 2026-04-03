@@ -157,6 +157,15 @@ defmodule Pgpeek.Snapshots do
     end)
   end
 
+  defp to_int(%Decimal{} = d), do: Decimal.to_integer(d)
+  defp to_int(n) when is_integer(n), do: n
+  defp to_int(n) when is_float(n), do: round(n)
+  defp to_int(_), do: 0
+
+  defp to_float(%Decimal{} = d), do: Decimal.to_float(d)
+  defp to_float(n) when is_number(n), do: n * 1.0
+  defp to_float(_), do: 0.0
+
   defp sum_floats(vals), do: Enum.reduce(vals, 0.0, &((&1 || 0.0) + &2))
   defp min_floats(vals), do: vals |> Enum.reject(&is_nil/1) |> Enum.min(fn -> 0.0 end)
   defp max_floats(vals), do: vals |> Enum.reject(&is_nil/1) |> Enum.max(fn -> 0.0 end)
@@ -203,9 +212,9 @@ defmodule Pgpeek.Snapshots do
     raw
     |> Enum.chunk_every(2, 1, :discard)
     |> Enum.map(fn [current, previous] ->
-      delta_calls = (current.calls || 0) - (previous.calls || 0)
-      delta_total = (current.total_exec_time || 0) - (previous.total_exec_time || 0)
-      delta_rows = (current.rows || 0) - (previous.rows || 0)
+      delta_calls = to_int(current.calls) - to_int(previous.calls)
+      delta_total = to_float(current.total_exec_time) - to_float(previous.total_exec_time)
+      delta_rows = to_int(current.rows) - to_int(previous.rows)
 
       delta_mean =
         if delta_calls > 0, do: delta_total / delta_calls, else: 0.0
@@ -217,10 +226,10 @@ defmodule Pgpeek.Snapshots do
         delta_mean_time: delta_mean,
         delta_rows: delta_rows,
         # Keep cumulative for the "latest" stat cards
-        calls: current.calls,
-        mean_exec_time: current.mean_exec_time,
-        total_exec_time: current.total_exec_time,
-        rows: current.rows
+        calls: to_int(current.calls),
+        mean_exec_time: to_float(current.mean_exec_time),
+        total_exec_time: to_float(current.total_exec_time),
+        rows: to_int(current.rows)
       }
     end)
     |> Enum.reject(fn d ->
