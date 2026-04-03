@@ -24,7 +24,11 @@ defmodule Pgpeek.ProbeRepo do
         password: password,
         database: database,
         pool_size: 3,
-        parameters: [application_name: "pgpeek"]
+        parameters: [application_name: "pgpeek"],
+        connect_timeout: 30_000,
+        handshake_timeout: 30_000,
+        queue_target: 10_000,
+        queue_interval: 5_000
       ]
 
       %{
