@@ -5,8 +5,13 @@ defmodule Pgpeek.Application do
 
   @impl true
   def start(_type, _args) do
+    # Start Repo first, run migrations, then start everything else.
+    # SnapshotWorker queries SQLite on init, so tables must exist.
+    {:ok, _} = Pgpeek.Repo.start_link([])
+    migrate!()
+    Pgpeek.Auth.seed_admin_user!()
+
     children = [
-      Pgpeek.Repo,
       Pgpeek.ProbeRepo,
       PgpeekWeb.Telemetry,
       {DNSCluster, query: Application.get_env(:pgpeek, :dns_cluster_query) || :ignore},
@@ -16,13 +21,7 @@ defmodule Pgpeek.Application do
     ]
 
     opts = [strategy: :one_for_one, name: Pgpeek.Supervisor]
-    result = Supervisor.start_link(children, opts)
-
-    # Run migrations and seed admin user on first boot
-    migrate!()
-    Pgpeek.Auth.seed_admin_user!()
-
-    result
+    Supervisor.start_link(children, opts)
   end
 
   @impl true
@@ -32,6 +31,10 @@ defmodule Pgpeek.Application do
   end
 
   defp migrate! do
-    Ecto.Migrator.run(Pgpeek.Repo, :up, all: true)
+    Ecto.Migrator.run(Pgpeek.Repo, migrations_path(), :up, all: true)
+  end
+
+  defp migrations_path do
+    Application.app_dir(:pgpeek, "priv/repo/migrations")
   end
 end
