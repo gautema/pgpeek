@@ -106,8 +106,12 @@ defmodule Pgpeek.SnapshotWorker do
       rows = columns_to_maps(stats_result)
       Pgpeek.Snapshots.insert_query_stats(snapshot.id, rows)
 
-      # Collect system-level metrics
-      Pgpeek.SystemStats.capture(snapshot.id)
+      # Collect system-level metrics (don't crash snapshot if this fails)
+      try do
+        Pgpeek.SystemStats.capture(snapshot.id)
+      rescue
+        e -> Logger.error("PgPeek: System stats capture failed: #{inspect(e)}")
+      end
 
       # Compute deltas and broadcast
       unless reset_changed do
